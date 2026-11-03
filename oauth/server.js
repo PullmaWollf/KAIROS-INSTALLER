@@ -28,10 +28,10 @@ export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,oper
      sessions.set(key,session);
      res.setHeader('Set-Cookie','kairos_sid='+key+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=1800');
     }
-    const configured=['github','supabase'].filter(p=>{try{providerConfig(p,env);return true;}catch{return false;}});
+    const configured=['github','supabase','vercel'].filter(p=>{try{providerConfig(p,env);return true;}catch{return false;}});
     const enabled=configured.map(p=>'<li><a href="/connect/'+p+'">Conectar '+p+'</a></li>').join('');
     const form=operator?'<h2>Executar próxima etapa</h2><p>O destino e os custos precisam ser confirmados a cada operação. A Vercel ainda exige token local.</p><form action="/operate" method="post"><input type="hidden" name="csrf" value="'+session.csrf+'"><p><label>GitHub da célula <input name="owner" required autocomplete="off"></label></p><p><label>Organização Supabase <input name="organizationId" required autocomplete="off"></label></p><p><label>Time Vercel <input name="teamId" required autocomplete="off"></label></p><p><label><input type="checkbox" name="acceptBilling" value="yes" required> Confirmo os destinos e possíveis cobranças na MINHA conta</label></p><button type="submit">Executar próxima etapa autorizada</button></form>':'<p>Operações pelo navegador desabilitadas até configurar KAIROS_ENABLE_LOCAL_OPERATIONS=1.</p>';
-    const html='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAIRÓS — OAuth local</title><body><h1>KAIRÓS — Conexões locais</h1><p>Autorizações somente nesta máquina. Tokens em memória, nunca no navegador ou disco.</p><ul>'+enabled+'</ul><p>Provedores conectados: consulte <a href="/status">status</a>.</p><p>Vercel exige integração registrada; ainda não disponível neste fluxo.</p>'+(readiness?'<p><a href="/installation">Consultar progresso e prontidão</a></p>':'')+form+'</body></html>';
+    const html='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAIRÓS — OAuth local</title><body><h1>KAIRÓS — Conexões locais</h1><p>Autorizações somente nesta máquina. Tokens em memória, nunca no navegador ou disco.</p><ul>'+enabled+'</ul><p>Provedores conectados: consulte <a href="/status">status</a>.</p><p>A conexão Vercel identifica a conta, mas NÃO autoriza criar projetos. O provisionamento ainda exige integração com permissões próprias.</p>'+(readiness?'<p><a href="/installation">Consultar progresso e prontidão</a></p>':'')+form+'</body></html>';
     return respond(res,200,html,'text/html; charset=utf-8');
    }
    if(!session)return respond(res,401,'Abra primeiro a página inicial do instalador local');
@@ -43,7 +43,7 @@ export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,oper
    if(u.pathname==='/status'&&req.method==='GET'){
     return respond(res,200,JSON.stringify({connected:[...session.tokens.keys()],pending:[...session.pending.keys()]}),'application/json; charset=utf-8');
    }
-   const start=u.pathname.match(/^\/connect\/(github|supabase)$/);
+   const start=u.pathname.match(/^\/connect\/(github|supabase|vercel)$/);
    if(start&&req.method==='GET'){
     // Blocking cross-site navigations prevents unauthenticated login initiation.
     const referer=req.headers.referer;
@@ -54,7 +54,7 @@ export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,oper
     session.pending.set(provider,auth.transaction);
     res.writeHead(302,{Location:auth.url});return res.end();
    }
-   const cb=u.pathname.match(/^\/callback\/(github|supabase)$/);
+   const cb=u.pathname.match(/^\/callback\/(github|supabase|vercel)$/);
    if(cb&&req.method==='GET'){
     const provider=cb[1],pending=session.pending.get(provider);
     if(!pending||pending.expiresAt<Date.now()||!safeEqual(pending.state,u.searchParams.get('state')))
