@@ -118,7 +118,11 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
      if(!envelope)throw new ControlError('ALREADY_CLAIMED','A senha inicial já foi exibida ou está indisponível');
      const data=decryptControl(envelope,'install:'+row.id,{env});
      if(typeof data?.adminPassword!=='string')throw new ControlError('NO_PASSWORD');
-     return json(res,200,{login:row.admin_login,temporaryPassword:data.adminPassword,
+     const {adminPassword,...remaining}=data;
+     // Best-effort scrub the encrypted temporary password after the one-time claim.
+     // A failed scrub never exposes it to logs and does not permit another claim.
+     await db.saveInstallSecrets(row.id,encryptControl(remaining,'install:'+row.id,{env})).catch(()=>{});
+     return json(res,200,{login:row.admin_login,temporaryPassword:adminPassword,
       warning:'Exibição única. Guarde em local privado e altere a senha após o primeiro acesso.'});
     }
    }
