@@ -42,3 +42,9 @@ O provisionador local em `provisioner/` e `scripts/provision.mjs` permite simula
 ## Incremento v0.3 — pré-verificação Supabase e Vercel (sem escrita)
 
 `npm run providers:check` lê somente o perfil Vercel, os times acessíveis e a lista de organizações Supabase da conta autorizada. Os destinos são **escolhidos explicitamente** nas variáveis locais. O diagnóstico não comprova titularidade de cobrança, não cria contas, não executa SQL e não publica apps. As respostas não incluem tokens. Para criar recursos nessas contas ainda será necessário um fluxo de consentimento e operações POST implementadas e homologadas separadamente.
+
+## Incremento v0.4 — provisionamento real opt-in por CLI
+
+Os adaptadores em `provisioner/create-projects.js` fazem **POST** para criar projeto Supabase ou Vercel após preflight read-only e consentimento explícito no `scripts/create-project.mjs`. As operações são independentes e começam com dry-run. O administrador fornece as credenciais temporárias **apenas no terminal local**, em variáveis de ambiente. A CLI não copia senhas para logs nem permite criar automaticamente no GitHub do mantenedor. Ainda não há prova criptográfica universal da titularidade do faturamento: verifique organização/time, cobranças e termos antes do `--execute`.
+
+**Atenção:** a criação real não foi homologada em contas externas. Sem `--execute` não há requisições. Em caso de falha/timeout, verificar no painel antes de tentar novamente. Não há reversão automática, migrações, env injection, OAuth pelo navegador ou deploy nessa versão.

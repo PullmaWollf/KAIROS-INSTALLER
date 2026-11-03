@@ -12,3 +12,7 @@ O projeto futuro com OAuth precisará proteger sessões, consentimento, escopos,
 
 ## Diagnóstico dos provedores (v0.3)
 O script `npm run providers:check` usa tokens locais para requisições **GET** às APIs oficiais de Supabase e Vercel. Nenhum token é coletado pela interface gráfica ou salvo em JSON. O diagnóstico limita a saída a identificadores não secretos, mas IDs de organizações/times ainda devem ser tratados com discrição em ambientes públicos. Verificar **acessibilidade não é verificar titularidade**, permissão de cobrança ou permissão de criar projetos. Antes de qualquer fluxo real de provisionamento, haverá checagem adicional de escopos, custos, autorizações e auditoria.
+
+## Provisionamento controlado v0.4
+
+`scripts/create-project.mjs` somente cria recursos após receber **--execute**, confirmação exata do destino (`--confirm-org` ou `--confirm-team`) e `--accept-billing`. Usa tokens **da célula no ambiente local**. Não imprime senhas, tokens ou resposta bruta do provedor. Timeout pode ocorrer **depois** da criação: antes de repetir, confira o painel para evitar duplicidade ou cobranças. A criação de projeto Supabase exige senha de banco forte, definida somente em `SUPABASE_DB_PASSWORD`. Tokens Supabase clássicos podem conceder acesso muito amplo: usar tokens com escopo quando disponíveis e revogar após concluir.

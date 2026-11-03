@@ -25,7 +25,7 @@ KAIRÓS Installer (assistente estático; sem banco)
          └── Vercel da célula → deploy PWA próprio
 ```
 
-**Importante:** o assistente visual é **guiado**. Desde a v0.2 existe também um **provisionador de repositório GitHub**, executado no computador do administrador, com pré-verificação e consentimento explícito. Supabase e Vercel ainda não são provisionados automaticamente. Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
+**Importante:** o assistente visual é **guiado**. Desde a v0.2 existe também um **provisionador de repositório GitHub**, executado no computador do administrador, com pré-verificação e consentimento explícito. Também há adaptadores locais para criar projetos **Supabase e Vercel**, mediante consentimento, com simulação por padrão. Eles ainda **não** aplicam migrações, injetam segredos nem executam deploy final. Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
 
 ## Provisionamento GitHub com validação (v0.2)
 
@@ -66,6 +66,16 @@ npm run providers:check
 ```
 
 O diagnóstico só envia requisições de leitura aos provedores oficiais, sem registrar tokens ou conteúdos sigilosos. Leia [o guia de validação](docs/PROVIDER-PREFLIGHT.md).
+
+## Criação de projetos na própria conta (v0.4)
+
+A nova CLI implementa chamadas de criação via APIs oficiais do **Supabase** e da **Vercel**. Por segurança, executa apenas **simulação** se não receber `--execute`. Cada criação é **uma operação separada**, confirmada no terminal pelo administrador da célula, com aceite expresso de possíveis cobranças.
+
+```bash
+npm run projects:help
+```
+
+Para prosseguir, consulte [Guia de provisionamento dos provedores](docs/CREATE-PROJECTS.md). **Não coloque tokens ou senhas no navegador, em arquivos versionados ou nesta conversa.** A criação dos projetos não significa que o app foi publicado: migrações, credenciais e implantação continuam pendentes.
 
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 
@@ -111,8 +121,9 @@ O KAIRÓS distribuído às células está em **[KAIROS-CORE](https://github.com/
 1. **v0.1** — assistente web sem segredos (entregue).
 2. **v0.2** — provisionamento GitHub com confirmação local (entregue, execução real ainda não homologada).
 3. **v0.3** — verificação local read-only de organizações Supabase e times Vercel (entregue; sem deploy).
-4. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
-5. **v1+** — migrações idempotentes, testes de deploy, tratamento de erros e retomada segura.
+4. **v0.4** — criação controlada dos projetos Supabase/Vercel por CLI, após preflight e consentimento (código e testes; sem homologação real).
+5. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
+6. **v1+** — migrações idempotentes, testes de deploy, tratamento de erros e retomada segura.
 
 A automação integral ainda depende das APIs, escopos OAuth, termos dos serviços e regras de faturamento. Não serão utilizadas credenciais do mantenedor para criar infraestrutura de terceiros.
 
