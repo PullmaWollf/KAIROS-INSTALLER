@@ -65,3 +65,7 @@ A Vercel disponibiliza **Deploy Hooks**, links secretos associados a um projeto 
 O orquestrador valida se o hook corresponde ao `KAIROS_VERCEL_PROJECT_ID`, se o token Vercel acessa o time confirmado e se o projeto está vinculado ao GitHub da própria célula. Só então faz **um único POST** para o hook e consulta a API por deployment `READY` criado após a confirmação das variáveis. Se não houver confirmação, entra em `needs-review`, sem repetir o POST. Sem hook, limita-se a verificar um deployment já disponível.
 
 O hook é uma credencial: **qualquer pessoa com a URL pode acionar builds**. Revogue-o se houver suspeita de vazamento. Referência: https://vercel.com/docs/deploy-hooks
+
+## 6. Cópia local automática do Core
+
+Com a GitHub CLI (`gh`) instalada no computador do administrador e `GITHUB_TOKEN` temporário da conta da célula, a fase GitHub cria o repositório a partir do template **e tenta cloná-lo na pasta `coreDir`** definida no plano. O destino local deve **não existir** e a pasta-pai deve existir; o sistema falha antes de criar o repositório se o destino já existe ou a CLI `gh` está ausente. O token é passado por `GH_TOKEN` no ambiente do subprocesso, **nunca na URL ou em argumentos**. Se o clone falhar após a criação remota, o registro fica em `needs-review`, e a rotina não recria o repositório automaticamente. Confira o GitHub e a pasta local antes de continuar.

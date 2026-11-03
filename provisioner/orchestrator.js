@@ -10,6 +10,7 @@ import {bootstrapPlan,bootstrapAdmin} from './bootstrap.js';
 import {checkDeployment} from './deployment.js';
 import {triggerProductionDeploy,inspectProductionAfter,validateDeployHook} from './deploy-hook.js';
 import {smokeTest} from './smoke.js';
+import {cloneCore,validateCloneDestination} from './local-core.js';
 import {reconcileGithub,reconcileSupabase,reconcileVercel} from './reconcile.js';
 
 export function guardConsent(config,consent){
@@ -36,6 +37,11 @@ export function createOperations({fetcher=fetch,runner}={}){
  return {
   async precheck(phase,c,e){
    operationEnvironment(phase,e);
+   if(phase==='github'){
+    await validateCloneDestination({owner:c.owner,repository:c.repository,coreDir:c.coreDir});
+    const gh=await run('gh',['--version'],{cwd:process.cwd()});
+    if(gh.code!==0)throw new ProvisioningError('TOOL_UNAVAILABLE','Instale GitHub CLI (gh) antes de iniciar');
+   }
    if(['migrate','bootstrap'].includes(phase)){
     const p=migrationPlan({projectRef:c.supabaseRef,repoOwner:c.owner,coreDir:c.coreDir});
     await inspectCore({plan:p,runner:run});
@@ -52,7 +58,9 @@ export function createOperations({fetcher=fetch,runner}={}){
    if(phase==='github'){
     const p={owner:c.owner,repository:c.repository,cellName:c.cellName,visibility:c.visibility};
     await preflightGithub({fetcher,token:e.GITHUB_TOKEN,plan:p});
-    return await createGithubFromTemplate({fetcher,token:e.GITHUB_TOKEN,plan:p});
+    const created=await createGithubFromTemplate({fetcher,token:e.GITHUB_TOKEN,plan:p});
+    const local=await cloneCore({owner:c.owner,repository:c.repository,coreDir:c.coreDir,token:e.GITHUB_TOKEN,runner:run});
+    return {...created,localClone:local.cloned};
    }
    if(phase==='supabase')return await createSupabaseProject({fetcher,token:e.SUPABASE_ACCESS_TOKEN,approved:true,dbPassword:e.SUPABASE_DB_PASSWORD,
     plan:{organizationId:c.supabaseOrgId,projectName:c.repository,region:c.supabaseRegion}});
