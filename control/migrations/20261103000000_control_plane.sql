@@ -137,7 +137,7 @@ begin
  end loop;
  if p_phase='supabase' and coalesce(p_receipt->>'projectRef','') !~ '^[a-z0-9]{10,30}$' then return false; end if;
  if p_phase='vercel' and coalesce(p_receipt->>'projectId','') !~ '^prj_[A-Za-z0-9_-]+$' then return false; end if;
- if p_phase='github' and p_receipt->>'repository' <> r.owner||'/'||r.repository then return false; end if;
+ if p_phase='github' and (p_receipt->>'repository') <> (r.owner||'/'||r.repository) then return false; end if;
  if p_phase='deploy' and coalesce(p_receipt->>'url','') !~ '^https://[a-z0-9-]+[.]vercel[.]app$' then return false; end if;
  update public.kairos_control_operations
  set status='confirmed',finished_at=now(),receipt=p_receipt
