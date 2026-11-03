@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {newWorkflow,nextPhase} from '../provisioner/workflow.js';
+import {newWorkflow,nextPhase,completePhase,updateTargets} from '../provisioner/workflow.js';
 import {writeJournal,readJournal} from '../provisioner/journal.js';
-import {readRecovery,recoveryStatus} from '../provisioner/recovery.js';
+import {readRecovery,recoveryStatus,newRecovery,beginOperation,settleOperation,writeRecovery} from '../provisioner/recovery.js';
 import {executeNext,executeSequence} from '../provisioner/orchestrator.js';
 const config={owner:'cliente',repository:'kairos-cliente',cellName:'Célula Cliente',visibility:'private',
  supabaseOrgId:'org_abc123',supabaseRef:'',supabaseRegion:'sa-east-1',vercelTeamId:'team_abc123',vercelProjectId:'',
@@ -62,5 +62,29 @@ test('sequência pausa em etapa que precisa de intervenção',async()=>{
   const ops={async precheck(){},async run(phase){count++;if(phase==='supabase')throw Error('possible project creation');return {repository:'cliente/kairos-cliente'};},async reconcile(){return {status:'unknown'}}};
   const out=await executeSequence({stateFile:s.stateFile,recoveryFile:s.recoveryFile,ops,consent});
   assert.equal(count,2);assert.equal(out.completedAll,false);assert.equal(out.report.at(-1).status,'needs-review');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
+
+test('read-only smoke recovery reconcilia sem repetir operações externas',async()=>{
+ const s=await setup();
+ try{
+  let state=await readJournal(s.stateFile);
+  state=completePhase(state,'github');state=completePhase(state,'supabase');
+  state=updateTargets(state,{supabaseRef:'abcdefghijklmno'});state=completePhase(state,'migrate');
+  state=completePhase(state,'vercel');state=updateTargets(state,{vercelProjectId:'prj_12345678'});
+  state=completePhase(state,'env');state=completePhase(state,'bootstrap');state=completePhase(state,'deploy');
+  state=updateTargets(state,{pwaUrl:'https://cliente.vercel.app'});
+  const initial=await readJournal(s.stateFile);
+  await writeJournal(s.stateFile,state,{expected:initial});
+  const recovery=newRecovery(config);
+  let uncertain=beginOperation(recovery,'smoke');
+  uncertain=settleOperation(uncertain,'smoke',{confirmed:false});
+  await writeRecovery(s.recoveryFile,uncertain,{initial:true});
+  let remoteWrites=0;
+  const ops={async reconcile(phase){assert.equal(phase,'smoke');return {status:'verified'};},
+   async precheck(){remoteWrites++},async run(){remoteWrites++}};
+  const out=await executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,env:{},consent,ops});
+  assert.equal(out.status,'recovered');assert.equal(out.remoteWrites,0);assert.equal(remoteWrites,0);
+  assert.equal((await readJournal(s.stateFile)).steps.smoke.state,'verified');
  }finally{await rm(s.dir,{recursive:true,force:true});}
 });

@@ -86,3 +86,7 @@ npm run oauth:local
 Abra `http://127.0.0.1:43117`. Clique em **Conectar GitHub** e **Conectar Supabase**, siga as autorizações oficiais, depois revise e confirme os destinos na página local para executar **somente a próxima etapa**. O servidor não permite executar outro projeto pelo formulário: usa apenas os arquivos definidos ao iniciar o processo. Para prosseguir, é necessário clicar de novo. Nenhum token é apresentado ao navegador.
 
 **Não exponha o serviço por túneis, roteadores, reverse proxies ou URLs públicas**. O fluxo de produção exigirá implantação de um backend real com autenticação de usuários, cofre de credenciais cifradas, consentimento e política LGPD. Até lá, trabalhe apenas em contas de teste separadas.
+
+## 8. Recuperação automática somente de leitura
+
+Se uma tentativa de **deploy** ou **smoke test** ficar pendente, a próxima execução pode reconfirmar o estado via **GET**: a Vercel deve mostrar produção `READY` criada **depois da tentativa original**, e o smoke test deve continuar validando todas as rotas esperadas. Quando houver evidência suficiente, o orquestrador recupera o progresso **sem repetir POST**. Projetos GitHub/Supabase/Vercel preexistentes ainda requerem revisão humana, pois a existência de um recurso não comprova que a instalação atual o criou. Migrações, bootstrap e variáveis parcialmente aplicadas também são bloqueadas para conferência manual.

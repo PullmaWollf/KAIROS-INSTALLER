@@ -30,7 +30,7 @@ export function beginOperation(data,name,now=Date.now()){
 }
 export function settleOperation(data,name,{confirmed=false,outcome='provider-confirmed',now=Date.now()}={}){
  const r=structuredClone(validateRecovery(data));
- if(r.operations[name]?.status!=='started')throw new ProvisioningError('BAD_ORDER','Nenhuma tentativa ativa');
+ if(!['started','needs-review'].includes(r.operations[name]?.status))throw new ProvisioningError('BAD_ORDER','Nenhuma tentativa pendente para reconciliar');
  r.operations[name]={status:confirmed?'confirmed':'needs-review',at:now,...(confirmed?{outcome}:{})};
  return validateRecovery(r);
 }

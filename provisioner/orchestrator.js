@@ -94,7 +94,17 @@ export function createOperations({fetcher=fetch,runner}={}){
    if(phase==='smoke')return await smokeTest({fetcher,url:c.pwaUrl,approved:true});
    throw new ProvisioningError('BAD_PHASE','Etapa desconhecida');
   },
-  async reconcile(phase,c,e){
+  async reconcile(phase,c,e,context={}){
+   if(phase==='deploy'){
+    const after=Math.max(Date.parse(context.state?.steps?.env?.at||''),context.recovery?.operations?.deploy?.at||0);
+    if(!Number.isFinite(after))return {status:'waiting'};
+    const d=await inspectProductionAfter({fetcher,token:e.VERCEL_TOKEN,target:{teamId:c.vercelTeamId,projectId:c.vercelProjectId},after});
+    return d.ready?{status:'verified',url:d.url}:{status:'waiting'};
+   }
+   if(phase==='smoke'){
+    await smokeTest({fetcher,url:c.pwaUrl,approved:true});
+    return {status:'verified'};
+   }
    if(phase==='github')return await reconcileGithub({fetcher,token:e.GITHUB_TOKEN,owner:c.owner,repository:c.repository});
    if(phase==='supabase')return await reconcileSupabase({fetcher,token:e.SUPABASE_ACCESS_TOKEN,organizationId:c.supabaseOrgId,projectName:c.repository});
    if(phase==='vercel')return await reconcileVercel({fetcher,token:e.VERCEL_TOKEN,teamId:c.vercelTeamId,projectName:c.repository,repository:c.owner+'/'+c.repository});
@@ -124,9 +134,17 @@ export async function executeNext({stateFile,recoveryFile,env={},consent={},ops=
   if(previous==='confirmed')throw new ProvisioningError('STATE_DRIFT','Operação confirmada, mas etapa ausente no progresso. Inspecione antes de continuar');
   operationEnvironment(phase,env);
   let finding;
-  try{finding=await ops.reconcile(phase,state.config,env);}
+  try{finding=await ops.reconcile(phase,state.config,env,{state,recovery});}
   catch{finding={status:'unknown'};}
-  return {status:'needs-review',phase,reconciliation:finding,automaticRetry:false};
+  if(['deploy','smoke'].includes(phase)&&finding.status==='verified'){
+   const updated=phase==='deploy'?updateTargets(state,{pwaUrl:finding.url}):state;
+   const completed=settleOperation(recovery,phase,{confirmed:true,outcome:phase==='smoke'?'smoke-checked':'provider-confirmed'});
+   await writeRecovery(recoveryFile,completed,{expected:recovery});
+   const next=completePhase(updated,phase,{verified:phase==='smoke'});
+   await writeJournal(stateFile,next,{expected:state});
+   return {status:'recovered',phase,next:nextPhase(next),remoteWrites:0};
+  }
+  return {status:['deploy','smoke'].includes(phase)?'waiting':'needs-review',phase,reconciliation:finding,automaticRetry:false};
  }
  await ops.precheck(phase,state.config,env);
  const started=beginOperation(recovery,phase);
@@ -154,7 +172,7 @@ export async function executeSequence(input){
  for(let i=0;i<8;i++){
   const step=await executeNext(input);
   report.push(step);
-  if(step.status!=='recorded')break;
+  if(!['recorded','recovered'].includes(step.status))break;
  }
  return {report,completedAll:report.at(-1)?.status==='all-recorded'||report.length===8&&report.at(-1)?.next===null};
 }
