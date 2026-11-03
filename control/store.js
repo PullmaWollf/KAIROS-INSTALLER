@@ -17,7 +17,7 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
    ...(body!==undefined?{body:JSON.stringify(body)}:{})});}
   catch{throw new ControlError('STORE_NETWORK','Banco de controle indisponível');}
   if(!r||r.status<200||r.status>=300)throw new ControlError('STORE_UNAVAILABLE','Falha na operação persistente');
-  if(r.status===204)return null;
+  if(r.status===204||r.status===201&&!(r.headers?.get?.('content-type')||'').includes('json'))return null;
   try{return await r.json();}catch{throw new ControlError('STORE_RESPONSE','Resposta de controle inválida');}
  }
  function list(table,filters,fields='*'){
