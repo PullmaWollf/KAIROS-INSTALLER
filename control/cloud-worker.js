@@ -91,6 +91,14 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
   }
   if(phase==='migrate'&&env.KAIROS_ENABLE_BETA_SQL!=='1')
    throw new ControlError('BETA_SQL_DISABLED','Endpoint de migrações Supabase beta não autorizado');
+  if(phase==='migrate'){
+   const project=await management(await token(ownerId,'supabase'),'/v1/projects/'+row.supabase_ref,{fetcher});
+   if((project?.ref||project?.id)!==row.supabase_ref||
+      ![row.supabase_org_id].includes(project?.organization_id)&&![row.supabase_org_id].includes(project?.organization_slug))
+    throw new ControlError('WRONG_OWNER','Projeto Supabase pertence a outro destino');
+   if(project?.status!=='ACTIVE_HEALTHY')
+    throw new ControlError('PROJECT_NOT_READY','Aguarde o Supabase ficar ACTIVE_HEALTHY antes de aplicar migrações');
+  }
   if(['migrate','env','bootstrap'].includes(phase)&&!ID.test(row.supabase_ref||''))
    throw new ControlError('MISSING_TARGET','Projeto Supabase ainda não foi criado');
   if(['env','deploy'].includes(phase)&&!/^prj_[a-z0-9_-]+$/i.test(row.vercel_project_id||''))
