@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#192c3e">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Referrer-Policy" content="no-referrer">
+<title>KAIRÓS — Instalação integrada</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./cloud.css">
+<script src="./cloud-ui.js" type="module"></script>
+</head>
+<body>
+<main class="shell">
+<header class="header"><div class="wordmark"><span class="mark">K</span><span>KAIRÓS <small>INSTALAÇÃO</small></span></div><div id="auth-status" class="state">Conectando...</div></header>
+<div class="hero"><span class="eyebrow">SUA CÉLULA · SUA CONTA · SUA INFRAESTRUTURA</span>
+<h1>Seu KAIRÓS, do início à publicação.</h1><p>Conecte os provedores e acompanhe cada etapa sem compartilhar senhas com o navegador. A versão integrada ainda precisa ser homologada antes de aceitar dados reais.</p></div>
+<div id="alert" role="status" aria-live="polite"></div>
+<section class="surface" id="connections"><h2>1. Conectar contas</h2><div id="providers" class="provider-grid"></div><p class="muted">Conectar uma conta não autoriza criar recursos automaticamente. A Vercel exige permissões específicas de gerenciamento.</p></section>
+<section class="surface" id="new-install"><h2>2. Preparar a célula</h2><p class="muted">Informe apenas identificadores. Senhas e chaves privadas ficam no backend.</p>
+<form id="create-form" autocomplete="off">
+<div class="fields">
+<label>Conta GitHub <input id="owner" name="owner" required readonly></label>
+<label>Repositório <input name="repository" required pattern="[a-zA-Z0-9][a-zA-Z0-9-]{2,62}" placeholder="kairos-celula-esperanca"></label>
+<label>Nome da célula <input name="cellName" required minlength="3" maxlength="70" placeholder="Célula Esperança"></label>
+<label>ID da organização Supabase <input name="supabaseOrgId" required placeholder="org_..." autocomplete="off"></label>
+<label>ID do time Vercel <input name="vercelTeamId" required placeholder="team_..." autocomplete="off"></label>
+<label>Região do banco <select name="region" required><option value="sa-east-1">São Paulo</option><option value="us-east-1">Estados Unidos — leste</option><option value="us-west-1">Estados Unidos — oeste</option><option value="eu-west-1">Europa — oeste</option><option value="eu-central-1">Europa — central</option></select></label>
+<label>Login do primeiro ADM <input name="adminLogin" required placeholder="administrador" minlength="3" maxlength="40"></label>
+</div>
+<button class="primary" type="submit">Registrar instalação</button></form></section>
+<section class="surface" id="installations"><div class="section-header"><h2>3. Progresso da instalação</h2><button type="button" class="secondary" id="reload">Atualizar</button></div>
+<div id="install-list"></div>
+<div id="detail"></div></section>
+<footer>KAIRÓS Installer · Ambiente de pré-homologação · <a href="./index.html">Instalação guiada</a> · <a href="https://github.com/PullmaWollf/KAIROS-INSTALLER" target="_blank" rel="noopener noreferrer">Código-fonte</a></footer>
+</main></body></html>
