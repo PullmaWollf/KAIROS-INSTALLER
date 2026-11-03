@@ -24,6 +24,7 @@ test('GitHub hosted PKCE authorization binds callback state and sets HttpOnly se
  let savedToken;
  const db={
   async session(){return null;},
+  async claimOAuth(hash){assert.match(hash,/^[a-f0-9]{64}$/);return true;},
   async upsertUser(v){assert.equal(v.login,'cliente');return v;},
   async createSession(v){assert.equal(v.id,12345);return '2026-12-01';},
   async saveConnection(_id,provider,envelope){assert.equal(provider,'github');savedToken=envelope;}
@@ -59,4 +60,17 @@ test('unauthenticated account creation and cross-origin mutation are blocked',as
  const bad=createResponse();await handler2(request('/api/installations',{method:'POST',cookie:'kairos_control_session='+fakeSession,
   origin:'https://evil.example',csrf:csrfFor(fakeSession,{env}),body:{}}),bad);
  assert.equal(bad.statusCode,400);
+});
+
+test('OAuth callback rejects replay before exchanging authorization code',async()=>{
+ let exchangeCount=0;
+ const db={async session(){return null;},async claimOAuth(){return false;}};
+ const handler=createHostedHandler({env,storeFactory:()=>db,fetcher:async()=>{exchangeCount++;throw Error('unexpected exchange');}});
+ const start=createResponse();await handler(request('/api/auth/start?provider=github'),start);
+ const cookie=start.getHeader('Set-Cookie').split(';')[0];
+ const state=new URL(start.getHeader('Location')).searchParams.get('state');
+ const callback=createResponse();await handler(request('/api/auth/callback?code=abc&state='+state,{cookie}),callback);
+ assert.equal(callback.statusCode,400);
+ assert.equal(JSON.parse(callback.body).error,'OAUTH_REPLAY');
+ assert.equal(exchangeCount,0);
 });
