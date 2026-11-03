@@ -106,6 +106,10 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
   async installSecrets(installationId){
    const rows=await list('kairos_control_install_secrets',{installation_id:'eq.'+installationId,limit:'1'},'envelope');
    return rows[0]?.envelope||null;
+  },
+  async takeAdminCredentials(installationId,userId){
+   return query('/rest/v1/rpc/kairos_control_take_admin_credentials',{
+    method:'POST',body:{p_installation:installationId,p_github_id:userId}});
   }
  });
 }
