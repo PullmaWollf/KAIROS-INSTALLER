@@ -23,6 +23,7 @@ test('GH_TOKEN chega somente pelo ambiente, nunca nos argumentos',async()=>{
    if(command==='gh'){
     await mkdir(join(dir,'supabase','migrations'),{recursive:true});
     await writeFile(join(dir,'supabase','migrations','20261103000000_kairos_initial.sql'),'create table if not exists public.app_users (id uuid); alter table public.app_users enable row level security;');
+    await writeFile(join(dir,'supabase','migrations','20261103010000_kairos_login_throttle.sql'),'create table if not exists public.kairos_login_attempts(id uuid); alter table public.kairos_login_attempts enable row level security; create function public.kairos_login_guard() returns boolean language sql as $select true$;');
     return {code:0,stdout:''};
    }
    return {code:0,stdout:'https://github.com/cliente/kairos-cliente.git'};
