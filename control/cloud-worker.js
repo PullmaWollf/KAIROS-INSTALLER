@@ -149,11 +149,40 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    return {receipt:{}};
   }
   if(phase==='deploy'){
-   const previous=await checkDeployment({fetcher,token:await token(ownerId,'vercel'),
-    target:{teamId:row.vercel_team_id,projectId:row.vercel_project_id}});
-   if(previous.ready&&previous.url)return {receipt:{url:previous.url},readOnly:true};
-   // First deployment is normally triggered by the Git integration; no blind POST.
-   return {waiting:true,reason:'DEPLOY_PENDING'};
+   const vToken=await token(ownerId,'vercel');
+   const target={teamId:row.vercel_team_id,projectId:row.vercel_project_id};
+   const prior=await db.operations(row.id);
+   const configuredAt=Date.parse(prior.find(x=>x.phase==='env'&&x.status==='confirmed')?.finished_at||'');
+   if(!Number.isFinite(configuredAt))throw new ControlError('BAD_STATE','Etapa de ambiente sem comprovante');
+   const previous=await checkDeployment({fetcher,token:vToken,target});
+   if(previous.ready&&previous.url&&previous.createdAt>configuredAt)
+    return {receipt:{url:previous.url},readOnly:true};
+   if(env.KAIROS_ENABLE_GIT_DEPLOY!=='1')
+    return {waiting:true,reason:'DEPLOY_NOT_TRIGGERED'};
+   const info=await fetcher('https://api.vercel.com/v9/projects/'+encodeURIComponent(row.vercel_project_id)+
+    '?teamId='+encodeURIComponent(row.vercel_team_id),{
+    method:'GET',redirect:'error',signal:AbortSignal.timeout(10000),headers:{Authorization:'Bearer '+vToken,Accept:'application/json'}});
+   if(info?.status!==200)throw new ControlError('VERCEL_PROJECT_UNAVAILABLE');
+   const details=await info.json();
+   if(details.id!==row.vercel_project_id||details.accountId!==row.vercel_team_id||details.link?.type!=='github'||
+    String(details.link.repo||'').toLowerCase()!==(row.owner+'/'+row.repository).toLowerCase())
+    throw new ControlError('WRONG_PROJECT','Deploy recusado: vínculo GitHub inesperado');
+   const repoId=Number(details.link.repoId);
+   if(!Number.isSafeInteger(repoId)||repoId<=0)throw new ControlError('GITHUB_REPO_ID_MISSING');
+   let response;
+   try{response=await fetcher('https://api.vercel.com/v13/deployments?teamId='+
+     encodeURIComponent(row.vercel_team_id)+'&forceNew=1',{
+     method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),
+     headers:{Authorization:'Bearer '+vToken,Accept:'application/json','Content-Type':'application/json'},
+     body:JSON.stringify({name:row.repository,project:row.vercel_project_id,target:'production',
+      gitSource:{type:'github',repoId,ref:'main'}})
+    });}catch{throw new ControlError('DEPLOY_UNCERTAIN','Verifique o painel antes de repetir');}
+   if(!response||![200,201,202].includes(response.status))throw new ControlError('DEPLOY_UNCERTAIN');
+   const created=await response.json().catch(()=>null);
+   if(!created?.id||created.projectId&&created.projectId!==row.vercel_project_id)
+    throw new ControlError('DEPLOY_UNCERTAIN');
+   // A successful POST is merely queued, NOT proof that the PWA is ready.
+   return {waiting:true,reason:'DEPLOY_TRIGGERED'};
   }
   if(phase==='smoke'){
    await smokeTest({url:row.pwa_origin,fetcher,approved:true});
