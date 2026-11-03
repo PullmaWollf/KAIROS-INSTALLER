@@ -38,14 +38,14 @@ try{
   if(pos<=0)throw new ProvisioningError('USAGE','Use chave=valor');
   const state=await readJournal(file);
   const updated=updateTargets(state,{[part.slice(0,pos)]:part.slice(pos+1)});
-  await writeJournal(file,updated);
+  await writeJournal(file,updated,{expected:state});
   console.log('Destino atualizado. Nenhuma operação remota executada.');
  }else{
   const step=option('--mark');
   if(option('--confirm-step')!==step)throw new ProvisioningError('CONSENT','Confirme a etapa usando --confirm-step '+step);
   const state=await readJournal(file);
   const updated=completePhase(state,step);
-  await writeJournal(file,updated);
+  await writeJournal(file,updated,{expected:state});
   console.log('Etapa registrada como CONFIRMADA MANUALMENTE. Não foi verificada automaticamente.');
  }
  if(cmd!=='--status'){

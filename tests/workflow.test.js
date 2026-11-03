@@ -48,12 +48,14 @@ test('registro local pode ser retomado sem perder etapas e sem sobrescrever',asy
   let s=newWorkflow(config);
   await writeJournal(file,s,{initial:true});
   s=completePhase(await readJournal(file),'github');
-  await writeJournal(file,s);
+  await writeJournal(file,s,{expected:await readJournal(file)});
   const restored=await readJournal(file);
   assert.equal(restored.steps.github.state,'attested');
   assert.equal(nextPhase(restored),'supabase');
   assert.equal(JSON.parse(await readFile(file,'utf8')).steps.github.evidence,'manual');
   await assert.rejects(writeJournal(file,newWorkflow(config),{initial:true}),e=>e.code==='STATE_EXISTS');
+  const outdated=newWorkflow(config);
+  await assert.rejects(writeJournal(file,completePhase(restored,'supabase'),{expected:outdated}),e=>e.code==='STALE_STATE');
  }finally{await rm(folder,{recursive:true,force:true});}
 });
 test('registros adulterados ou conclusão fora de ordem são recusados',()=>{

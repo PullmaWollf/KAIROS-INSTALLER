@@ -96,6 +96,16 @@ A CLI agora disponibiliza `--action bootstrap` para criar **o primeiro ADM** exe
 
 A v0.6 também corrige o fluxo de migração Supabase: vincula explicitamente o projeto via `supabase link --project-ref` antes de `supabase db push --linked`. **As operações reais ainda dependem de homologação numa instalação isolada.**
 
+## Fluxo de instalação recuperável (v0.7)
+
+O **KAIRÓS Workflow** agora acompanha todas as oito etapas da instalação com registro **local**. O arquivo armazena somente nomes e IDs não secretos, timestamps e confirmações **manuais**. Ele impede fases fora de ordem, sobrescritas de destino e atualização simultânea com registros desatualizados. **Não realiza uma instalação automática de ponta a ponta, nem confirma que uma operação realmente ocorreu.**
+
+```bash
+npm run workflow:help
+```
+
+Leia o guia [Workflow v0.7](docs/WORKFLOW.md) para iniciar, continuar após interrupções e conferir o próximo passo. As operações reais continuam exigindo os comandos específicos do provisionador com consentimento. Uma marcação `attested` é apenas declaração do administrador, não homologação.
+
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 
 Este Installer é **100% estático**. O dono do projeto pode hospedá-lo no **GitHub Pages**, sem banco, storage, tokens ou funções de servidor. Siga [o guia GitHub Pages](docs/PUBLISH.md). Cada aplicativo gerado continua usando as contas próprias da célula.
@@ -143,8 +153,9 @@ O KAIRÓS distribuído às células está em **[KAIROS-CORE](https://github.com/
 4. **v0.4** — criação controlada dos projetos Supabase/Vercel por CLI (sem homologação real).
 5. **v0.5** — migrações, variáveis privadas e consulta de deploy por CLI local (sem homologação real).
 6. **v0.6** — bootstrap ADM e smoke test público sem enviar credenciais (código e testes).
-7. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
-8. **v1+** — retomada segura e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
+7. **v0.7** — acompanhamento das oito etapas, retomada, bloqueio de ordem e registro local sem segredos (código e testes).
+8. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
+9. **v1+** — automação ponta a ponta e integração com servidor seguro e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
 
 A automação integral ainda depende das APIs, escopos OAuth, termos dos serviços e regras de faturamento. Não serão utilizadas credenciais do mantenedor para criar infraestrutura de terceiros.
 

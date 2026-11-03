@@ -52,3 +52,7 @@ Os adaptadores em `provisioner/create-projects.js` fazem **POST** para criar pro
 ## v0.5 — Finalização controlada de instalação
 
 A CLI `scripts/finalize.mjs` usa o projeto escolhido para executar migrações versionadas Supabase (prévia antes de aplicar), enviar **apenas três** variáveis privadas para **produção** na Vercel e consultar o status de deployments. Cada ação é isolada, requer `--execute` e confirmação dos IDs; sem isso opera em dry-run sem rede. Não existe deploy automático nem bootstrap administrativo automatizado nessa versão. A execução real ainda **não foi homologada** em ambientes separados; consulte `docs/FINALIZE.md`.
+
+## Incremento v0.7 — Workflow recuperável (local)
+
+`scripts/workflow.mjs` controla uma sequência de oito marcos, registra apenas dados não secretos, impede mudanças silenciosas de destino, recusa sobrescrita da sessão e permite continuar após interrupções. Operações externas **não** são disparadas automaticamente pelo Workflow. Marcar etapas significa `attested` (declaração manual), não verificação automatizada. O status **nunca** usa o campo `homologated=true`. Guia: `docs/WORKFLOW.md`.

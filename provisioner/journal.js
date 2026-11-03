@@ -14,7 +14,7 @@ export async function readJournal(filename){
  try{return validateWorkflow(JSON.parse(await readFile(path,'utf8')));}
  catch(e){if(e instanceof ProvisioningError)throw e;throw new ProvisioningError('BAD_STATE','Registro JSON inválido');}
 }
-export async function writeJournal(filename,workflow,{initial=false}={}){
+export async function writeJournal(filename,workflow,{initial=false,expected=null}={}){
  const path=pathOk(filename),state=validateWorkflow(workflow),parent=dirname(path);
  await mkdir(parent,{recursive:true});
  const lockPath=path+'.lock',tmp=join(parent,'.'+basename(path)+'.'+randomBytes(8).toString('hex')+'.tmp');
@@ -24,6 +24,10 @@ export async function writeJournal(filename,workflow,{initial=false}={}){
   const exists=await stat(path).then(()=>true,()=>false);
   if(initial&&exists)throw new ProvisioningError('STATE_EXISTS','Instalação já existe. Use status; não sobrescreva o registro');
   if(!initial&&!exists)throw new ProvisioningError('STATE_MISSING','Registro não encontrado');
+  if(!initial&&expected!==null){
+   const current=validateWorkflow(JSON.parse(await readFile(path,'utf8')));
+   if(JSON.stringify(current)!==JSON.stringify(validateWorkflow(expected)))throw new ProvisioningError('STALE_STATE','O registro foi modificado por outro processo. Reabra o status antes de alterar');
+  }
   temp=await open(tmp,'wx',0o600);
   await temp.writeFile(JSON.stringify(state,null,2)+'\n','utf8');
   await temp.sync();await temp.close();temp=null;
