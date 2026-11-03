@@ -63,6 +63,11 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
    const rows=await list('kairos_control_connections',{github_id:'eq.'+id},'provider');
    return rows.map(r=>r.provider);
   },
+  async disconnect(id,provider){
+   if(!Number.isSafeInteger(id)||!['github','supabase','vercel'].includes(provider))
+    throw new ControlError('BAD_PROVIDER');
+   await query('/rest/v1/kairos_control_connections?github_id=eq.'+id+'&provider=eq.'+provider,{method:'DELETE'});
+  },
   async connection(id,provider){
    if(!['github','supabase','vercel'].includes(provider))throw new ControlError('BAD_PROVIDER');
    const rows=await list('kairos_control_connections',{github_id:'eq.'+id,provider:'eq.'+provider,limit:'1'},'envelope');

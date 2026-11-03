@@ -23,7 +23,13 @@ async function initialize(){
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
    const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
-   link.href='/api/auth/start?provider='+provider;card.append(link);list.append(card);
+   link.href='/api/auth/start?provider='+provider;card.append(link);
+   if(connected)card.append(button('Desconectar',async()=>{
+    if(!window.confirm('Desconectar '+provider+' neste instalador? Revogue também o acesso na conta do provedor se desejar.'))return;
+    try{await api('/api/connections/disconnect',{method:'POST',body:JSON.stringify({provider})});await initialize();}
+    catch(error){notify(error.message);}
+   }));
+   list.append(card);
   }
   if(session.signedIn)await loadInstallations();else{$('install-list').textContent='Conecte sua conta GitHub para ver instalações.';$('detail').replaceChildren();}
  }catch(error){

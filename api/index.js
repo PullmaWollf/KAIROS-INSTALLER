@@ -82,6 +82,12 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     res.setHeader('Set-Cookie',makeCookie(sessionName,'',{age:0}));
     return json(res,200,{ok:true});
    }
+   if(url.pathname==='/api/connections/disconnect'&&req.method==='POST'){
+    requireMutation(req,rawSession,{env});
+    const {provider}=await readJSON(req);
+    await db.disconnect(user.id,provider);
+    return json(res,200,{ok:true,provider});
+   }
    if(url.pathname==='/api/installations'&&req.method==='GET'){
     return json(res,200,{installations:await db.installations(user.id)});
    }
