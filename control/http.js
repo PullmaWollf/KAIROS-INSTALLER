@@ -11,8 +11,10 @@ export function configuredOrigin(env=process.env){
 }
 export function cookieValue(req,name){
  const raw=String(req.headers?.cookie||'');
- const segment=raw.split(';').map(s=>s.trim()).find(s=>s.startsWith(name+'='));
- return segment?segment.slice(name.length+1):null;
+ const segments=raw.split(';').map(s=>s.trim()).filter(s=>s.startsWith(name+'='));
+ // Reject duplicate session/OAuth cookies instead of trusting attacker-controlled ordering.
+ if(segments.length>1)throw new ControlError('BAD_COOKIE','Cookie duplicado');
+ return segments.length?segments[0].slice(name.length+1):null;
 }
 export function makeCookie(name,value,{age,path='/api'}={}){
  if(!/^[a-z0-9_]{3,48}$/i.test(name)||!/^[a-zA-Z0-9_.-]*$/.test(value||''))
