@@ -1,11 +1,12 @@
 {
   "name": "kairos-installer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check wizard.js && node --check scripts/dev.mjs"
+    "check": "node --check app.js && node --check wizard.js && node --check scripts/dev.mjs && node --check scripts/provision.mjs && node --check provisioner/plan.js && node --check provisioner/github.js",
+    "provision:plan": "node scripts/provision.mjs --plan examples/installation-plan.example.json"
   }
 }

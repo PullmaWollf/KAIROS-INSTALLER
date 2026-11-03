@@ -32,3 +32,9 @@ Referências:
 - https://supabase.com/docs/guides/deployment/database-migrations
 - https://supabase.com/docs/reference/api/introduction
 - https://docs.github.com/en/rest/repos/repos#create-a-repository-using-a-template
+
+## Incremento implementado v0.2 — criação do GitHub
+
+O provisionador local em `provisioner/` e `scripts/provision.mjs` permite simular plano, confirmar identidade e gerar repositório a partir do template oficial usando token do **próprio cliente** definido localmente. A verificação rejeita qualquer destino sob a conta do mantenedor. Não há backend nem sessão OAuth; o token não sai da máquina do cliente exceto para a API do GitHub, ao executar os comandos explicitamente.
+
+**Pendente:** ativar o marcador *Template repository* no KAIROS-CORE; criar identidade OAuth hospedada para futuras operações; Supabase/Vercel só com autorização e consentimento de custos. O CLI não está conectado à interface gráfica do assistente.

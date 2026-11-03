@@ -25,7 +25,35 @@ KAIRÓS Installer (assistente estático; sem banco)
          └── Vercel da célula → deploy PWA próprio
 ```
 
-**Importante:** atualmente o assistente é **guiado**, não executa provisionamento automático por API. Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
+**Importante:** o assistente visual é **guiado**. Desde a v0.2 existe também um **provisionador de repositório GitHub**, executado no computador do administrador, com pré-verificação e consentimento explícito. Supabase e Vercel ainda não são provisionados automaticamente. Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
+
+## Provisionamento GitHub com validação (v0.2)
+
+O primeiro recurso automatizável é **criar uma cópia privada do KAIRÓS Core no GitHub da própria célula**. Nunca usamos a conta do mantenedor como destino.
+
+1. Baixe o Installer (`git clone`) e tenha Node.js 24.
+2. Copie `examples/installation-plan.example.json` para `installation-plan.json` e preencha **somente** login GitHub da célula, nome do repositório, nome da célula e visibilidade. Não inclua senhas ou tokens.
+3. Confira o plano sem acesso externo:
+
+```bash
+node scripts/provision.mjs --plan installation-plan.json
+```
+
+4. Crie um token GitHub na **conta da célula**, com privilégios mínimos exigidos pela API de template. Guarde-o apenas na variável de ambiente `GITHUB_TOKEN` no terminal local — nunca no JSON ou na interface pública. Execute:
+
+```bash
+node scripts/provision.mjs --plan installation-plan.json --preflight
+```
+
+5. Após confirmar titularidade, visibilidade e permissões, execute **uma única vez**:
+
+```bash
+node scripts/provision.mjs --plan installation-plan.json --execute --confirm-owner SEU-LOGIN
+```
+
+O comando confirma a identidade da conta e que o Core é um template válido. Sem `--execute`, **nenhum repositório é criado**. Para este recurso funcionar, o mantenedor precisa ativar *Template repository* nas configurações do `KAIROS-CORE`.
+
+Leia [docs/PROVISIONER.md](docs/PROVISIONER.md) para segurança e limites do projeto.
 
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 

@@ -46,6 +46,8 @@ function github(box){
  heading(box,'Repositório da sua célula');para(box,'Conecte-se ao GitHub com uma conta sua e crie uma cópia independente do KAIRÓS. O repositório não ficará sob o proprietário do template.');
  const c=item(box,'1. Crie seu repositório','Abra o template oficial. Se a opção Use this template ainda não estiver disponível, utilize fork ou importe o repositório na sua conta.');
  c.append(buttonLink(TEMPLATE,'Abrir KAIRÓS no GitHub'));
+ const auto=item(box,'Provisionamento com confirmação (v0.2)','Para quem possui Node.js, já há um comando local que verifica a titularidade do GitHub e cria o repositório após confirmação explícita. Não é um botão web automático nem recebe tokens nesta página.');
+ auto.append(buttonLink('https://github.com/PullmaWollf/KAIROS-INSTALLER/blob/main/docs/PROVISIONER.md','Ver guia da automação GitHub'));
  const f=textField(box,'repo-url','URL do repositório da célula','https://github.com/seu-usuario/sua-celula','Informe somente o endereço público/privado do repositório, nunca um token.',model.repo);
  f.addEventListener('input',()=>{model.repo=f.value;});
 }
