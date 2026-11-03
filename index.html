@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#302036"><title>KAIRÓS Installer — Instalação independente</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+<script type="module" src="./app.js"></script>
+</head>
+<body>
+<main class="shell">
+<header class="intro"><div class="brand"><span class="mark">K</span><span>KAIRÓS <small>INSTALLER</small></span></div><span class="pill">Prévia • Instalação assistida</span></header>
+<section class="hero"><span class="eyebrow">SUA CÉLULA, SUA INFRAESTRUTURA</span><h1>Seu aplicativo começa aqui.</h1>
+<p>Você terá seu próprio GitHub, Supabase e Vercel. Nenhum aplicativo de outra célula utilizará os recursos do mantenedor do KAIRÓS.</p>
+</section>
+<div class="layout">
+<aside aria-label="Etapas de implantação"><h2>Etapas</h2><ol id="steps"></ol><p class="note">A primeira versão não pede tokens, senhas nem chaves privadas. Todas as autorizações são feitas diretamente nos sites oficiais.</p></aside>
+<section class="content" aria-live="polite">
+<div class="progress"><span id="progress-title">Etapa 1 de 6</span><strong id="progress-count">0% concluído</strong></div>
+<div class="progressbar" role="progressbar" aria-label="Progresso da instalação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressbar"><span id="progress-fill"></span></div>
+<div id="screen"></div>
+<nav class="actions"><button type="button" class="secondary" id="previous">Voltar</button><button type="button" class="primary" id="next">Próxima etapa</button></nav>
+</section>
+</div><footer>KAIRÓS Installer v0.1 · Nenhuma credencial é enviada ou armazenada. · <a href="https://github.com/PullmaWollf/KAIROS-INSTALLER">Código e documentação</a></footer>
+</main>
+</body>
+</html>
