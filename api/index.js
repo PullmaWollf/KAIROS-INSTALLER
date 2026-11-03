@@ -3,6 +3,7 @@ import {ControlError,encryptControl,decryptControl,randomToken} from '../control
 import {validateCloudPlan,safeInstallation,phaseFor} from '../control/plan.js';
 import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAuth,openOAuth,responseHeaders,json,redirect,readJSON} from '../control/http.js';
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
+import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
 function errCode(e){return e instanceof ControlError?e.code:'INTERNAL_ERROR';}
@@ -95,7 +96,31 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    if(detail&&req.method==='GET'){
     const row=await db.installation(user.id,detail[1]);
     if(!row)throw new ControlError('NOT_FOUND','Instalação não encontrada');
-    return json(res,200,{installation:safeInstallation(row),operations:await db.operations(row.id)});
+    return json(res,200,statusForClient(row,await db.operations(row.id)));
+   }
+   const action=url.pathname.match(/^\/api\/installations\/([a-f0-9-]{36})\/(execute|reconcile|credentials)$/i);
+   if(action&&req.method==='POST'){
+    requireMutation(req,rawSession,{env});
+    const row=await db.installation(user.id,action[1]);
+    if(!row)throw new ControlError('NOT_FOUND');
+    if(action[2]==='execute'){
+     const consent=await readJSON(req);
+     const result=await executeCloudStep({db,userId:user.id,row,consent,env,fetcher});
+     return json(res,result.status==='waiting'?202:200,result);
+    }
+    if(action[2]==='reconcile'){
+     const result=await reconcileCloudStep({db,userId:user.id,row,env,fetcher});
+     return json(res,200,result);
+    }
+    if(action[2]==='credentials'){
+     if(Number(row.phase_index)<6)throw new ControlError('NOT_READY','Primeiro ADM ainda não foi criado');
+     const envelope=await db.takeAdminCredentials(row.id,user.id);
+     if(!envelope)throw new ControlError('ALREADY_CLAIMED','A senha inicial já foi exibida ou está indisponível');
+     const data=decryptControl(envelope,'install:'+row.id,{env});
+     if(typeof data?.adminPassword!=='string')throw new ControlError('NO_PASSWORD');
+     return json(res,200,{login:row.admin_login,temporaryPassword:data.adminPassword,
+      warning:'Exibição única. Guarde em local privado e altere a senha após o primeiro acesso.'});
+    }
    }
    if(url.pathname==='/api/readiness'&&req.method==='GET'){
     return json(res,200,{ready:await db.health(),oauthConnected:await db.connections(user.id),
@@ -107,6 +132,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    // Never expose provider error response bodies, access tokens or database details.
    const code=errCode(e);
    const status=code==='LOGIN_REQUIRED'?401:code==='NOT_FOUND'?404:
+    code==='WRITES_DISABLED'||code==='BETA_SQL_DISABLED'||code==='VERCEL_SCOPE_REQUIRED'?423:
     code==='NOT_CONFIGURED'||code==='STORE_UNAVAILABLE'||code==='STORE_NETWORK'?503:
     code==='INTERNAL_ERROR'?500:400;
    return json(res,status,{ok:false,error:code});
