@@ -8,6 +8,7 @@ import {migrationPlan,migrateSupabase,inspectCore} from './migrations.js';
 import {environmentPlan,configureVercelEnvironment,validateSecrets} from './vercel-env.js';
 import {bootstrapPlan,bootstrapAdmin} from './bootstrap.js';
 import {checkDeployment} from './deployment.js';
+import {triggerProductionDeploy,inspectProductionAfter,validateDeployHook} from './deploy-hook.js';
 import {smokeTest} from './smoke.js';
 import {reconcileGithub,reconcileSupabase,reconcileVercel} from './reconcile.js';
 
@@ -45,6 +46,7 @@ export function createOperations({fetcher=fetch,runner}={}){
     if(e.SUPABASE_URL!=='https://'+c.supabaseRef+'.supabase.co')throw new ProvisioningError('WRONG_SUPABASE','URL do banco não pertence ao projeto esperado');
    }
    if(phase==='bootstrap'&&e.SUPABASE_URL!=='https://'+c.supabaseRef+'.supabase.co')throw new ProvisioningError('WRONG_SUPABASE','URL Supabase difere do ref escolhido');
+   if(phase==='deploy'&&e.KAIROS_VERCEL_DEPLOY_HOOK_URL)validateDeployHook({hookUrl:e.KAIROS_VERCEL_DEPLOY_HOOK_URL,projectId:c.vercelProjectId});
   },
   async run(phase,c,e,context={}){
    if(phase==='github'){
@@ -63,11 +65,22 @@ export function createOperations({fetcher=fetch,runner}={}){
    if(phase==='bootstrap')return await bootstrapAdmin({plan:bootstrapPlan({coreDir:c.coreDir,repoOwner:c.owner,adminLogin:c.adminLogin,adminName:c.adminName}),
     runner:run,approved:true,environment:{SUPABASE_URL:e.SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY:e.SUPABASE_SERVICE_ROLE_KEY,ADMIN_PASSWORD:e.ADMIN_PASSWORD}});
    if(phase==='deploy'){
-    const d=await checkDeployment({fetcher,token:e.VERCEL_TOKEN,target:{teamId:c.vercelTeamId,projectId:c.vercelProjectId}});
-    if(!d.ready||!d.url)throw new ProvisioningError('DEPLOY_WAITING','Aguarde deployment de produção READY após configuração das variáveis');
-    const after=Date.parse(context.state?.steps?.env?.at||'');
-    if(!Number.isFinite(after)||!Number.isFinite(d.createdAt)||d.createdAt<=after)
-     throw new ProvisioningError('DEPLOY_TOO_OLD','Deploy de produção não comprovado após configuração das variáveis. Reimplante e confira o horário');
+    const target={teamId:c.vercelTeamId,projectId:c.vercelProjectId},after=Date.parse(context.state?.steps?.env?.at||'');
+    if(!Number.isFinite(after))throw new ProvisioningError('BAD_STATE','Etapa de variáveis sem data de confirmação');
+    if(e.KAIROS_VERCEL_DEPLOY_HOOK_URL){
+     await triggerProductionDeploy({fetcher,token:e.VERCEL_TOKEN,target,hookUrl:e.KAIROS_VERCEL_DEPLOY_HOOK_URL,
+       repoOwner:c.owner,repoName:c.repository,approved:true,after});
+     // GET polling does not trigger another deployment.
+     for(let i=0;i<6;i++){
+      const d=await inspectProductionAfter({fetcher,token:e.VERCEL_TOKEN,target,after});
+      if(d.ready)return d;
+      if(i<5)await new Promise(resolve=>setTimeout(resolve,3000));
+     }
+     throw new ProvisioningError('DEPLOY_WAITING','Hook acionado mas deploy não confirmou READY; consulte Vercel antes de tentar novamente');
+    }
+    const d=await checkDeployment({fetcher,token:e.VERCEL_TOKEN,target});
+    if(!d.ready||!d.url||!Number.isFinite(d.createdAt)||d.createdAt<=after)
+     throw new ProvisioningError('DEPLOY_TOO_OLD','Deployment READY posterior às variáveis não encontrado; configure um Deploy Hook da célula ou faça deploy manual');
     return d;
    }
    if(phase==='smoke')return await smokeTest({fetcher,url:c.pwaUrl,approved:true});

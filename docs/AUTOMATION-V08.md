@@ -57,3 +57,11 @@ Nenhum segredo entra no registro. Os arquivos `.kairos-install/` são ignorados 
 4. Disparar e monitorar novo deploy do projeto na conta da célula, garantindo que os segredos já foram definidos.
 5. Usar um armazenamento transacional com idempotência, reconciliação robusta e auditoria para múltiplos clientes.
 6. Homologar migrações, primeiro ADM, login, permissões e PWA numa conta de teste dedicada.
+
+## 5. Disparo opcional de deployment após configurar variáveis
+
+A Vercel disponibiliza **Deploy Hooks**, links secretos associados a um projeto e branch. Crie **um hook para a branch `main`** nas configurações Git do projeto **da célula**. Mantenha a URL apenas na variável local `KAIROS_VERCEL_DEPLOY_HOOK_URL`. Nunca a registre em arquivos JSON, no site, nos logs, no GitHub ou nesta conversa.
+
+O orquestrador valida se o hook corresponde ao `KAIROS_VERCEL_PROJECT_ID`, se o token Vercel acessa o time confirmado e se o projeto está vinculado ao GitHub da própria célula. Só então faz **um único POST** para o hook e consulta a API por deployment `READY` criado após a confirmação das variáveis. Se não houver confirmação, entra em `needs-review`, sem repetir o POST. Sem hook, limita-se a verificar um deployment já disponível.
+
+O hook é uma credencial: **qualquer pessoa com a URL pode acionar builds**. Revogue-o se houver suspeita de vazamento. Referência: https://vercel.com/docs/deploy-hooks
