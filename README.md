@@ -27,6 +27,10 @@ KAIRÓS Installer (assistente estático; sem banco)
 
 **Importante:** atualmente o assistente é **guiado**, não executa provisionamento automático por API. Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
 
+## Publicar sem usar Supabase ou Vercel do mantenedor
+
+Este Installer é **100% estático**. O dono do projeto pode hospedá-lo no **GitHub Pages**, sem banco, storage, tokens ou funções de servidor. Siga [o guia GitHub Pages](docs/PUBLISH.md). Cada aplicativo gerado continua usando as contas próprias da célula.
+
 ## Como usar
 
 Abra `index.html` usando um servidor local HTTP ou publique como site estático:
