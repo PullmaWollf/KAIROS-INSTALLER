@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {beginAuthorization,exchangeCode,safeEqual,providerConfig} from '../oauth/protocol.js';
 import {createOAuthServer} from '../oauth/server.js';
 const env={KAIROS_GITHUB_CLIENT_ID:'Iv1_example012345',KAIROS_GITHUB_CLIENT_SECRET:'test-secret-for-github-123456789',
- KAIROS_SUPABASE_CLIENT_ID:'example-client-id',KAIROS_SUPABASE_CLIENT_SECRET:'test-secret-for-supabase-12345'};
+ KAIROS_SUPABASE_CLIENT_ID:'example-client-id',KAIROS_SUPABASE_CLIENT_SECRET:'test-secret-for-supabase-12345',
+ KAIROS_VERCEL_CLIENT_ID:'vercel-example-id',KAIROS_VERCEL_CLIENT_SECRET:'vercel-secret-for-tests-12345'};
 test('PKCE state e token exchange GitHub sem revelar segredos',async()=>{
  const config=providerConfig('github',env);
  const auth=beginAuthorization({provider:'github',callbackUrl:'http://127.0.0.1:43117/callback/github',config});
@@ -48,4 +49,22 @@ test('OAuth local não expõe token, recusa host falso e state inválido',async(
   assert.deepEqual(body.connected,[]);
   assert.equal(JSON.stringify(body).includes('access_token'),false);
  }finally{await server.close();}
+});
+
+test('Vercel sign-in uses PKCE and identity-only OpenID scopes',async()=>{
+ const config=providerConfig('vercel',env);
+ const {url,transaction}=beginAuthorization({provider:'vercel',config,callbackUrl:'http://127.0.0.1:43117/callback/vercel'});
+ const u=new URL(url);
+ assert.equal(u.hostname,'vercel.com');
+ assert.equal(u.searchParams.get('scope'),'openid email profile offline_access');
+ assert.equal(u.searchParams.get('code_challenge_method'),'S256');
+ const fetcher=async(_url,opts)=>{
+  assert.equal(_url,'https://api.vercel.com/login/oauth/token');
+  const body=new URLSearchParams(opts.body);
+  assert.equal(body.get('grant_type'),'authorization_code');
+  assert.equal(body.get('code_verifier'),transaction.verifier);
+  return {status:200,async json(){return {access_token:'vercel-identity-test-token-1234'};}};
+ };
+ const token=await exchangeCode({transaction,code:'temporary',config,fetcher});
+ assert.equal(token.accessToken,'vercel-identity-test-token-1234');
 });
