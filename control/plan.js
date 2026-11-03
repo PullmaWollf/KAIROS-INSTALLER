@@ -14,7 +14,7 @@ export function validateCloudPlan(data,authenticatedLogin){
  if(!['sa-east-1','us-east-1','us-west-1','eu-west-1','eu-central-1'].includes(data.region))
   throw new ControlError('BAD_REGION','Região não permitida no plano de instalação');
  if(typeof data.adminLogin!=='string'||!/^[a-z0-9._-]{3,40}$/.test(data.adminLogin))throw new ControlError('BAD_ADMIN','Login administrativo inválido');
- return Object.freeze({owner:data.owner,repository:data.repository,cell_name:data.cellName.trim(),supabase_org_id:data.supabaseOrgId,
+ return Object.freeze({owner:authenticatedLogin,repository:data.repository.toLowerCase(),cell_name:data.cellName.trim(),supabase_org_id:data.supabaseOrgId,
   vercel_team_id:data.vercelTeamId,region:data.region,admin_login:data.adminLogin});
 }
 export function phaseFor(index){
