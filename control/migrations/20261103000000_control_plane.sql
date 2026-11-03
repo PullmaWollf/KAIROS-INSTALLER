@@ -47,6 +47,7 @@ create index if not exists kairos_control_installs_user_idx on public.kairos_con
 create table if not exists public.kairos_control_install_secrets (
  installation_id uuid primary key references public.kairos_control_installations(id) on delete cascade,
  envelope text not null check(length(envelope) between 40 and 24000),
+ admin_password_claimed_at timestamptz,
  updated_at timestamptz not null default now()
 );
 
@@ -175,3 +176,23 @@ revoke all on function public.kairos_control_review(uuid,bigint,text,uuid,text) 
 grant execute on function public.kairos_control_claim(uuid,bigint,text) to service_role;
 grant execute on function public.kairos_control_finish(uuid,bigint,text,uuid,jsonb) to service_role;
 grant execute on function public.kairos_control_review(uuid,bigint,text,uuid,text) to service_role;
+
+-- One-time delivery of the bootstrap password to the installation owner after success.
+create or replace function public.kairos_control_take_admin_credentials(
+ p_installation uuid,p_github_id bigint
+) returns text language plpgsql security definer set search_path=''
+as $$
+declare v_phase smallint;
+declare v_envelope text;
+begin
+ select phase_index into v_phase from public.kairos_control_installations
+ where id=p_installation and github_id=p_github_id for update;
+ if not found or v_phase<6 then return null; end if;
+ update public.kairos_control_install_secrets
+ set admin_password_claimed_at=now()
+ where installation_id=p_installation and admin_password_claimed_at is null
+ returning envelope into v_envelope;
+ return v_envelope;
+end; $$;
+revoke all on function public.kairos_control_take_admin_credentials(uuid,bigint) from public,anon,authenticated;
+grant execute on function public.kairos_control_take_admin_credentials(uuid,bigint) to service_role;
