@@ -103,6 +103,10 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
    return query('/rest/v1/rpc/kairos_control_review',{method:'POST',
     body:{p_installation:installationId,p_github_id:id,p_phase:phase,p_attempt:attemptId,p_error_code:reason}});
   },
+  async resolveReview(installationId,id,phase,attemptId,receipt){
+   return query('/rest/v1/rpc/kairos_control_confirm_review',{method:'POST',
+    body:{p_installation:installationId,p_github_id:id,p_phase:phase,p_attempt:attemptId,p_receipt:receipt}});
+  },
   async saveInstallSecrets(installationId,envelope){
    await query('/rest/v1/kairos_control_install_secrets?on_conflict=installation_id',{
     method:'POST',headers:{Prefer:'resolution=merge-duplicates'},
