@@ -20,8 +20,9 @@ try{
  ]);
  const pkg=JSON.parse(packageText),routing=JSON.parse(vercel);
  need(pkg.name==='kairos-core'&&pkg.dependencies?.['@supabase/supabase-js'],'Core Node e SDK Supabase');
- for(const route of ['public','me','login','logout'])need(api.includes("route==='"+route+"'"),'API /api/'+route);
+ for(const route of ['health','public','me','login','logout'])need(api.includes("route==='"+route+"'"),'API /api/'+route);
  need(api.includes('loginThrottle')&&core.includes('loginThrottleKey'),'proteção de login');
+ need(api.includes('readinessCheck')&&core.includes('readinessCheck'),'verificação de saúde do Core');
  need(/create table if not exists public\.app_users/i.test(sql)&&/enable row level security/i.test(sql),'esquema app_users e RLS');
  need(/function public\.kairos_login_guard/i.test(guard)&&/grant execute on function/i.test(guard),'migração de controle de acesso');
  for(const name of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','ADMIN_PASSWORD','ADMIN_LOGIN'])

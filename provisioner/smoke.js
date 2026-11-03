@@ -5,7 +5,7 @@ function validatedOrigin(url){
   throw new ProvisioningError('BAD_URL','Use apenas o domínio HTTPS raiz *.vercel.app da célula, sem caminhos, credenciais ou parâmetros');
  return u.origin;
 }
-export function smokePlan({url}){return Object.freeze({origin:validatedOrigin(url),checks:['GET /api/public','GET /manifest.webmanifest','GET /api/me (401 esperado)','GET / (HTML)','GET /sw.js (Service Worker)'],writes:false,includesCredentials:false});}
+export function smokePlan({url}){return Object.freeze({origin:validatedOrigin(url),checks:['GET /api/health (200 esperado)','GET /api/public','GET /manifest.webmanifest','GET /api/me (401 esperado)','GET / (HTML)','GET /sw.js (Service Worker)'],writes:false,includesCredentials:false});}
 async function get(fetcher,url){
  let resp;try{resp=await fetcher(url,{method:'GET',redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(12000)});}
  catch{throw new ProvisioningError('NETWORK','Não foi possível consultar o PWA. Confira o deploy e DNS');}
@@ -26,6 +26,9 @@ async function getSiteText(fetcher,url){
 export async function smokeTest({url,fetcher=fetch,approved=false}){
  const p=smokePlan({url});
  if(!approved)throw new ProvisioningError('CONSENT','Confirme o domínio exclusivo da célula antes de consultar');
+ const health=await get(fetcher,p.origin+'/api/health');
+ if(health.status!==200||health.body?.ok!==true||health.body?.ready!==true)
+  throw new ProvisioningError('HEALTH_FAILED','O Core não confirmou banco, guarda de login e Storage disponíveis');
  const publicData=await get(fetcher,p.origin+'/api/public');
  if(publicData.status!==200||publicData.body?.ok!==true||typeof publicData.body?.branding?.name!=='string'||!Array.isArray(publicData.body?.posts))
   throw new ProvisioningError('PUBLIC_FAILED','API pública do Core não respondeu como esperado');
@@ -40,5 +43,5 @@ export async function smokeTest({url,fetcher=fetch,approved=false}){
  const worker=await getSiteText(fetcher,p.origin+'/sw.js');
  if(!worker.includes('addEventListener')||!worker.includes("'/api/'"))
   throw new ProvisioningError('PWA_FAILED','Service Worker não possui proteção de cache da API');
- return {status:'smoke-passed',origin:p.origin,checks:['public','manifest','unauthenticated-protection','html-shell','service-worker'],note:'Não testa login ADM, permissões internas, RLS nem instalação em dispositivos reais'};
+ return {status:'smoke-passed',origin:p.origin,checks:['health','public','manifest','unauthenticated-protection','html-shell','service-worker'],note:'Não testa login ADM, permissões internas, RLS nem instalação em dispositivos reais'};
 }

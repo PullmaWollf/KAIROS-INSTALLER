@@ -26,6 +26,7 @@ test('smoke verifica API pública, manifesto e proteção de /api/me sem senha',
  const fetcher=async(url,opts)=>{
   calls.push([url,opts.method]);
   let status=200,body={};
+  if(url.endsWith('/api/health'))body={ok:true,ready:true};
   if(url.endsWith('/api/public'))body={ok:true,branding:{name:'Célula Teste'},posts:[]};
   if(url.endsWith('/manifest.webmanifest'))body={display:'standalone',icons:[{src:'/icon.png'}]};
   if(url.endsWith('/api/me')){status=401;body={ok:false,error:'Sessão expirada'};}
@@ -35,7 +36,7 @@ test('smoke verifica API pública, manifesto e proteção de /api/me sem senha',
   }};
  };
  const r=await smokeTest({url:'https://minha-celula.vercel.app/',fetcher,approved:true});
- assert.equal(r.status,'smoke-passed');assert.equal(calls.length,5);assert.equal(calls.every(x=>x[1]==='GET'),true);
+ assert.equal(r.status,'smoke-passed');assert.equal(calls.length,6);assert.equal(calls.every(x=>x[1]==='GET'),true);
 });
 test('smoke recusa sites arbitrários e não acessa sem consentimento',async()=>{
  assert.throws(()=>smokePlan({url:'https://evil.example/'}),e=>e.code==='BAD_URL');
@@ -43,15 +44,20 @@ test('smoke recusa sites arbitrários e não acessa sem consentimento',async()=>
  await assert.rejects(smokeTest({url:'https://celula.vercel.app/',fetcher:()=>{throw Error('not called')}}),e=>e.code==='CONSENT');
 });
 test('smoke não marca sucesso com rota auth aberta',async()=>{
- const fetcher=async url=>({status:200,async json(){return url.endsWith('/api/public')?{ok:true,branding:{name:'Teste'},posts:[]}:url.endsWith('manifest.webmanifest')?{display:'standalone',icons:[]}:{ok:true,user:{id:'x'}};}});
+ const fetcher=async url=>({status:200,async json(){return url.endsWith('/api/health')?{ok:true,ready:true}:url.endsWith('/api/public')?{ok:true,branding:{name:'Teste'},posts:[]}:url.endsWith('manifest.webmanifest')?{display:'standalone',icons:[]}:{ok:true,user:{id:'x'}};}});
  await assert.rejects(smokeTest({url:'https://celula.vercel.app/',fetcher,approved:true}),e=>e.code==='AUTH_FAILED');
 });
 
 test('smoke bloqueia HTML sem app e Service Worker incorreto',async()=>{
  const fake=async url=>({
   status:url.endsWith('/api/me')?401:200,
-  async json(){return url.endsWith('/api/public')?{ok:true,branding:{name:'Célula'},posts:[]}:url.endsWith('/manifest.webmanifest')?{display:'standalone',icons:[{src:'/favicon.svg'}]}:{ok:false};},
+  async json(){return url.endsWith('/api/health')?{ok:true,ready:true}:url.endsWith('/api/public')?{ok:true,branding:{name:'Célula'},posts:[]}:url.endsWith('/manifest.webmanifest')?{display:'standalone',icons:[{src:'/favicon.svg'}]}:{ok:false};},
   async text(){return 'unexpected document';}
  });
  await assert.rejects(smokeTest({url:'https://cliente.vercel.app/',fetcher:fake,approved:true}),e=>e.code==='PWA_FAILED');
+});
+
+test('smoke recusa Core sem migração de segurança mesmo que API pública funcione',async()=>{
+ const fetcher=async()=>({status:503,async json(){return {ok:false,ready:false}}});
+ await assert.rejects(smokeTest({url:'https://cliente.vercel.app/',fetcher,approved:true}),e=>e.code==='HEALTH_FAILED');
 });
