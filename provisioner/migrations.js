@@ -15,7 +15,14 @@ export async function inspectCore({plan,runner}){
  const st=await stat(file).catch(()=>null);
  if(!st?.isFile())throw new ProvisioningError('MISSING_MIGRATION','Migração inicial não encontrada na pasta Core da célula');
  const sql=await readFile(file,'utf8');
- if(!/create table if not exists public\.app_users/i.test(sql)||!/enable row level security/i.test(sql))throw new ProvisioningError('INVALID_MIGRATION','A migração não corresponde à base esperada do KAIRÓS');
+ if(!/create table if not exists public\.app_users/i.test(sql)||!/enable row level security/i.test(sql))
+  throw new ProvisioningError('INVALID_MIGRATION','A migração inicial não corresponde à base esperada do KAIRÓS');
+ const securityFile=join(plan.coreDir,'supabase','migrations','20261103010000_kairos_login_throttle.sql');
+ const securityStat=await stat(securityFile).catch(()=>null);
+ if(!securityStat?.isFile())throw new ProvisioningError('MISSING_MIGRATION','Migração de segurança do login ausente; atualize a cópia do Core');
+ const securitySql=await readFile(securityFile,'utf8');
+ if(!/kairos_login_guard/i.test(securitySql)||!/enable row level security/i.test(securitySql))
+  throw new ProvisioningError('INVALID_MIGRATION','Migração de proteção do login inválida');
  const git=await runner('git',['remote','get-url','origin'],{cwd:plan.coreDir});
  if(git.code!==0)throw new ProvisioningError('NO_REMOTE','Repositório Core sem origem Git verificável');
  const remote=git.stdout.trim().replace(/\.git$/,'').replace(/\/$/,'');
