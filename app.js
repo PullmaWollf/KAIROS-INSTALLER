@@ -55,6 +55,8 @@ function supabase(box){
  heading(box,'Seu próprio Supabase');para(box,'O administrador cria e mantém um projeto novo na própria conta. O instalador nunca utiliza a infraestrutura do mantenedor KAIRÓS.');
  const c=item(box,'2. Crie um projeto exclusivo','Entre no painel Supabase, crie sua organização/projeto, escolha região, plano e confira eventuais custos e limites.');
  c.append(buttonLink(SUPABASE_CREATE,'Criar projeto Supabase'));
+ const assist=item(box,'Provisionamento controlado (v0.4)','O administrador pode criar o projeto Supabase por comando local, depois de conferir a organização, os possíveis custos e autorizar a operação. Nenhuma chave é digitada neste site.');
+ assist.append(buttonLink('https://github.com/PullmaWollf/KAIROS-INSTALLER/blob/main/docs/CREATE-PROJECTS.md','Como automatizar Supabase'));
  const i=textField(box,'project-ref','Project reference (não é segredo)','Ex.: abcdefghijklmnopqrst','Encontre o ID nas configurações do projeto. Não informe service_role ou senhas.',model.ref);
  i.addEventListener('input',()=>model.ref=i.value.trim());
  warning(box,'Nunca use o Supabase do AGAPE ou o de outra célula. Não cole chaves no instalador.');
@@ -72,6 +74,8 @@ function vercel(box){
  heading(box,'Publicar na sua Vercel');para(box,'Entre na Vercel com a conta da sua célula. Importe o repositório que você criou e configure as variáveis de ambiente na interface privada da Vercel.');
  const r=validateRepo(model.repo);const c=item(box,'4. Importe seu código','Selecione sua cópia do repositório no painel. Para começar, também é possível usar o botão de clonagem do template oficial.');
  c.append(buttonLink(VERCEL_IMPORT,'Abrir Vercel / New Project'));
+ const create=item(box,'Criação controlada de projeto (v0.4)','O provisionador local pode criar o projeto Vercel no time da célula, conectado ao repositório GitHub dela. Configurar os segredos e publicar o aplicativo ainda são tarefas separadas.');
+ create.append(buttonLink('https://github.com/PullmaWollf/KAIROS-INSTALLER/blob/main/docs/CREATE-PROJECTS.md','Como automatizar Vercel'));
  const link=r?'https://vercel.com/new/clone?repository-url='+encodeURIComponent(r.url)+'&env=SUPABASE_URL%2CSUPABASE_SERVICE_ROLE_KEY%2CSESSION_SECRET':vercelLink();
  c.append(buttonLink(link,'Importação orientada'));
  item(box,'Variáveis de ambiente','SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e SESSION_SECRET — todos configurados diretamente no painel privado da Vercel. Nenhum valor será solicitado aqui.');
@@ -88,7 +92,7 @@ function finish(box){
  ['Dados','Mural, encontros e escalas operam exclusivamente no banco da célula'],
  ['Segurança','Backups, proteção do login e termos de privacidade revisados antes do uso real']
  ])item(c,t,d);
- warning(box,'Esta versão do instalador guia a instalação. Ela não verifica automaticamente o conteúdo do banco nem executa deploy em seu nome.','warning');
+ warning(box,'O navegador continua no modo guiado. Existem comandos locais para criar projetos nas contas da célula, mas migrações, variáveis de ambiente, deploy e verificação final ainda precisam ser concluídos.','warning');
  if(STAGES.every(s=>model.completed[s.id]))warning(box,'Checklist integralmente marcado. Conclua os testes reais antes de liberar para membros.','good');
 }
 render();
