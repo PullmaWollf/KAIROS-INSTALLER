@@ -24,3 +24,9 @@
 - Revisar os privilégios do token Vercel antes de permitir qualquer criação pelo navegador.
 
 O próximo passo, depois do desenvolvimento local, é configurar apps OAuth e um ambiente de homologação **isolado**. O AGAPE não precisa sofrer alterações.
+
+## Identidade Vercel (incremento v0.9)
+
+O OAuth local aceita opcionalmente `KAIROS_VERCEL_CLIENT_ID` e `KAIROS_VERCEL_CLIENT_SECRET`, obtidos de um aplicativo *Sign in with Vercel* registrado pelo responsável do Installer. Callback de laboratório: `http://127.0.0.1:43117/callback/vercel`.
+
+**Atenção:** as permissões OIDC `openid email profile offline_access` identificam a pessoa, **não** concedem automaticamente permissão para criar projetos Vercel. O token de identidade é mantido apenas na RAM e **não é passado ao provisionador**. Para criação automatizada com OAuth será necessário registrar uma **Vercel API Integration**, definir escopos de leitura/escrita e homologar os consentimentos.
