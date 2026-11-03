@@ -16,3 +16,7 @@ O script `npm run providers:check` usa tokens locais para requisições **GET** 
 ## Provisionamento controlado v0.4
 
 `scripts/create-project.mjs` somente cria recursos após receber **--execute**, confirmação exata do destino (`--confirm-org` ou `--confirm-team`) e `--accept-billing`. Usa tokens **da célula no ambiente local**. Não imprime senhas, tokens ou resposta bruta do provedor. Timeout pode ocorrer **depois** da criação: antes de repetir, confira o painel para evitar duplicidade ou cobranças. A criação de projeto Supabase exige senha de banco forte, definida somente em `SUPABASE_DB_PASSWORD`. Tokens Supabase clássicos podem conceder acesso muito amplo: usar tokens com escopo quando disponíveis e revogar após concluir.
+
+## v0.5 — Segurança na finalização
+
+Os módulos de migração, variáveis privadas e status usam somente tokens locais da célula. O provisionador valida a origem GitHub clonada antes de aplicar SQL; a Vercel exige identificação exata do projeto/time e vínculo GitHub da célula, e **rejeita sobrescrita de variáveis existentes**. Não registra valores secretos, ainda não faz rollback nem verifica login em ambiente real. Uma publicação `READY` é apenas estado da Vercel e não equivale a aprovação de segurança. Leia `docs/FINALIZE.md`.

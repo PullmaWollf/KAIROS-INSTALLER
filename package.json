@@ -1,14 +1,15 @@
 {
   "name": "kairos-installer",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check wizard.js && node --check scripts/dev.mjs && node --check scripts/provision.mjs && node --check provisioner/plan.js && node --check provisioner/github.js && node --check provisioner/provider-http.js && node --check provisioner/providers.js && node --check scripts/preflight-providers.mjs && node --check provisioner/create-projects.js && node --check scripts/create-project.mjs",
+    "check": "node --check app.js && node --check wizard.js && node --check scripts/dev.mjs && node --check scripts/provision.mjs && node --check provisioner/plan.js && node --check provisioner/github.js && node --check provisioner/provider-http.js && node --check provisioner/providers.js && node --check scripts/preflight-providers.mjs && node --check provisioner/create-projects.js && node --check scripts/create-project.mjs && node --check provisioner/vercel-env.js && node --check provisioner/migrations.js && node --check provisioner/deployment.js && node --check scripts/finalize.mjs",
     "provision:plan": "node scripts/provision.mjs --plan examples/installation-plan.example.json",
     "providers:check": "node scripts/preflight-providers.mjs",
-    "projects:help": "node scripts/create-project.mjs --help"
+    "projects:help": "node scripts/create-project.mjs --help",
+    "finalize:help": "node scripts/finalize.mjs --help"
   }
 }

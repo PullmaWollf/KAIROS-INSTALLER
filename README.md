@@ -25,7 +25,7 @@ KAIRÓS Installer (assistente estático; sem banco)
          └── Vercel da célula → deploy PWA próprio
 ```
 
-**Importante:** o assistente visual é **guiado**. Desde a v0.2 existe também um **provisionador de repositório GitHub**, executado no computador do administrador, com pré-verificação e consentimento explícito. Também há adaptadores locais para criar projetos **Supabase e Vercel**, mediante consentimento, com simulação por padrão. Eles ainda **não** aplicam migrações, injetam segredos nem executam deploy final. Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
+**Importante:** o assistente visual é **guiado**. Desde a v0.2 existe também um **provisionador de repositório GitHub**, executado no computador do administrador, com pré-verificação e consentimento explícito. Também há adaptadores locais para criar projetos **Supabase e Vercel**, mediante consentimento, com simulação por padrão. A versão **v0.5** inclui migração Supabase via CLI local, configuração de variáveis privadas Vercel e consulta ao status de publicação. **Nenhuma dessas operações foi homologada em projeto real; não há deploy automático final.** Ele ajuda a configurar o processo e fornece comandos específicos do projeto do administrador. Não recebe chaves secretas.
 
 ## Provisionamento GitHub com validação (v0.2)
 
@@ -77,6 +77,19 @@ npm run projects:help
 
 Para prosseguir, consulte [Guia de provisionamento dos provedores](docs/CREATE-PROJECTS.md). **Não coloque tokens ou senhas no navegador, em arquivos versionados ou nesta conversa.** A criação dos projetos não significa que o app foi publicado: migrações, credenciais e implantação continuam pendentes.
 
+## Finalização controlada da instalação (v0.5)
+
+Com a cópia do Core, o projeto Supabase e a Vercel **da célula** já criados, o administrador pode usar a CLI local para:
+- Executar `supabase db push` com prévia e confirmação do project ref.
+- Enviar `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `SESSION_SECRET` **somente** para o projeto Vercel previamente validado, sem sobrescrever variáveis existentes.
+- Consultar o status de deployments de produção, sem afirmar que o PWA está homologado.
+
+```bash
+npm run finalize:help
+```
+
+**[Guia completo da v0.5](docs/FINALIZE.md)**. O padrão é simulação sem acesso à rede. Operações reais exigem `--execute`, confirmação dos IDs e tokens exclusivos da célula no terminal privado.
+
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 
 Este Installer é **100% estático**. O dono do projeto pode hospedá-lo no **GitHub Pages**, sem banco, storage, tokens ou funções de servidor. Siga [o guia GitHub Pages](docs/PUBLISH.md). Cada aplicativo gerado continua usando as contas próprias da célula.
@@ -121,9 +134,10 @@ O KAIRÓS distribuído às células está em **[KAIROS-CORE](https://github.com/
 1. **v0.1** — assistente web sem segredos (entregue).
 2. **v0.2** — provisionamento GitHub com confirmação local (entregue, execução real ainda não homologada).
 3. **v0.3** — verificação local read-only de organizações Supabase e times Vercel (entregue; sem deploy).
-4. **v0.4** — criação controlada dos projetos Supabase/Vercel por CLI, após preflight e consentimento (código e testes; sem homologação real).
-5. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
-6. **v1+** — migrações idempotentes, testes de deploy, tratamento de erros e retomada segura.
+4. **v0.4** — criação controlada dos projetos Supabase/Vercel por CLI (sem homologação real).
+5. **v0.5** — migrações, configuração de variáveis privadas e consulta de deploy por CLI local (código e testes, sem homologação real).
+6. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
+7. **v1+** — retomada segura e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
 
 A automação integral ainda depende das APIs, escopos OAuth, termos dos serviços e regras de faturamento. Não serão utilizadas credenciais do mantenedor para criar infraestrutura de terceiros.
 

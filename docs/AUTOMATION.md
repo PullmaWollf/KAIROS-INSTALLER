@@ -48,3 +48,7 @@ O provisionador local em `provisioner/` e `scripts/provision.mjs` permite simula
 Os adaptadores em `provisioner/create-projects.js` fazem **POST** para criar projeto Supabase ou Vercel após preflight read-only e consentimento explícito no `scripts/create-project.mjs`. As operações são independentes e começam com dry-run. O administrador fornece as credenciais temporárias **apenas no terminal local**, em variáveis de ambiente. A CLI não copia senhas para logs nem permite criar automaticamente no GitHub do mantenedor. Ainda não há prova criptográfica universal da titularidade do faturamento: verifique organização/time, cobranças e termos antes do `--execute`.
 
 **Atenção:** a criação real não foi homologada em contas externas. Sem `--execute` não há requisições. Em caso de falha/timeout, verificar no painel antes de tentar novamente. Não há reversão automática, migrações, env injection, OAuth pelo navegador ou deploy nessa versão.
+
+## v0.5 — Finalização controlada de instalação
+
+A CLI `scripts/finalize.mjs` usa o projeto escolhido para executar migrações versionadas Supabase (prévia antes de aplicar), enviar **apenas três** variáveis privadas para **produção** na Vercel e consultar o status de deployments. Cada ação é isolada, requer `--execute` e confirmação dos IDs; sem isso opera em dry-run sem rede. Não existe deploy automático nem bootstrap administrativo automatizado nessa versão. A execução real ainda **não foi homologada** em ambientes separados; consulte `docs/FINALIZE.md`.
