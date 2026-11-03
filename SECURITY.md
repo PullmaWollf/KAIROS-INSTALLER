@@ -34,3 +34,13 @@ O orquestrador v0.8 registra tentativas **antes** de qualquer operação externa
 ## OAuth local com execução (incremento v0.8)
 
 A execução pelo navegador é **opt-in** usando `KAIROS_ENABLE_LOCAL_OPERATIONS=1`, arquivos de estado definidos no processo e um formulário com CSRF, Origin estrito e aceite de custos. GitHub e Supabase utilizam **somente** os tokens da sessão OAuth em memória; valores preexistentes `GITHUB_TOKEN` e `SUPABASE_ACCESS_TOKEN` são ignorados no modo navegador. A operação executa uma etapa por requisição, nunca a instalação inteira silenciosamente. É experimental, somente `127.0.0.1`. OAuth hospedado e integração Vercel continuam pendentes.
+
+## Backend integrado (pré-homologação)
+
+O Installer possui agora um plano de controle com projeto Supabase e Vercel **dedicados**, separados do AGAPE. A API deve ter origem HTTPS fixa; usa cookie de sessão opaco HttpOnly/Secure/SameSite=Lax, CSRF por sessão e fluxo OAuth com state+PKCE. Conexões externas são cifradas com AES-256-GCM (chave de 32 bytes mantida apenas em ambiente servidor). Cada instalação é vinculada ao GitHub ID autenticado; leituras e alterações filtram por esse usuário.
+
+As operações remotas exigem `KAIROS_CONTROL_ENABLE_WRITES=1` e consentimento exato de proprietário GitHub, organização Supabase, time Vercel e custos. Para Vercel, é necessária autorização específica de gerenciamento. A migração SQL por API está sob uma flag adicional por ser endpoint Beta; nenhuma consulta SQL arbitrária chega do navegador. O controle faz reservas transacionais antes de efeitos remotos e não repete POST após falhas.
+
+As tabelas do controle usam RLS, acesso apenas via chave privada e funções `SECURITY DEFINER` limitadas a `service_role`. O backend não armazena membros, presenças, contatos nem outros dados das células. Cookies, tokens, senhas de ADM, chaves Supabase e valores de Deploy Hooks nunca devem ser registrados em logs. Conexões podem ser desconectadas no painel; revogação no provedor ainda deve ser feita nas configurações da conta.
+
+**Antes de habilitar uso por terceiros:** revisar a configuração cloud real, limites de abuso, retenção de dados, OAuth permissions, recuperação, backups, privacidade e a seção [controle de riscos](docs/CONTROL-THREAT-MODEL.md).

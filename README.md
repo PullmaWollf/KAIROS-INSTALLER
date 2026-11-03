@@ -18,8 +18,8 @@
 Este projeto é o **assistente de implantação do KAIRÓS**, um PWA de gestão de células cristãs. A proposta é que **cada célula tenha seus próprios serviços**, sem consumir os limites nem gerar cobranças no Supabase e Vercel do mantenedor.
 
 ```text
-KAIRÓS Installer (assistente estático; sem banco)
-         │
+KAIRÓS Installer (Vercel + Supabase exclusivos do controle)
+         │ OAuth, sessões cifradas, progresso e auditoria
          ├── GitHub da célula → cópia do KAIRÓS Core
          ├── Supabase da célula → banco PostgreSQL próprio
          └── Vercel da célula → deploy PWA próprio
@@ -206,3 +206,20 @@ node scripts/readiness.mjs --config workflow.local.json --phase github --check-c
 O diagnóstico **não obtém credenciais automaticamente** e não habilita operações sem autorização. As etapas reais continuam dependendo de contas e permissões individuais dos provedores. Não é aprovação de produção.
 
 Veja [pré-homologação](docs/PRE-HOMOLOGATION.md) para os bloqueios que só podem ser concluídos com autorização/configuração do administrador.
+
+## Instalador integrado — primeira release candidate
+
+O **backend do Installer** agora está implementado no próprio repositório e preparado para hospedagem em **projetos Vercel e Supabase exclusivos do controle**, sem reutilizar o AGAPE. Inclui:
+
+- Login OAuth GitHub, conexão Supabase e Vercel com state/PKCE, sessão HttpOnly/CSRF e tokens cifrados;
+- Painel responsivo em `/app.html` com contas, cadastro de instalação e oito fases;
+- Controle transacional em PostgreSQL para reservar fases e bloquear repetições de POST após timeout;
+- Motor de API para GitHub, Supabase, migrações auditadas, Vercel, ADM, deploy e testes, mediante permissões e consentimento;
+- Recuperação automática somente quando há evidência por leitura (deployment/smoke), e entrega única da senha temporária do primeiro administrador;
+- Testes de contrato e simulação de oito fases em CI.
+
+**O código está em fase pré-homologação.** Ainda precisa de implantação dos projetos dedicados ao Installer, configuração das três OAuth Apps, escopos da Vercel, validação do endpoint SQL Beta e testes reais em conta de laboratório. O modo que cria recursos permanece **desativado por padrão**.
+
+**[Guia completo de implantação do Installer](docs/HOSTED-INSTALLER.md)** · **[Modelo de riscos](docs/CONTROL-THREAT-MODEL.md)**.
+
+A versão estática anterior continua acessível por `index.html` e não solicita credenciais. Para OAuth e instalações coordenadas, **hospede o backend em HTTPS com os segredos apenas no servidor**; o GitHub Pages isolado não suporta essa operação.

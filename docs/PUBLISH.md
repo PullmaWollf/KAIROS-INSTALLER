@@ -23,3 +23,9 @@ O Installer é um site que roda no navegador. Ele **não solicita chaves privada
 - [ ] A política de privacidade do futuro provisionamento OAuth está pronta antes dessa funcionalidade existir.
 
 **Atenção:** GitHub Pages não autentica nem provisiona infraestrutura. Para provisionamento automático real, será necessário um backend seguro independente, sujeito a custos e configuração de consentimento dos provedores.
+
+## Painel integrado (release candidate)
+
+O modo de instalação assistida **estático** pode continuar publicado no GitHub Pages. Já o modo integrado de `/app.html` depende do servidor Node em `api/index.js` e de um Supabase exclusivo do Installer.
+
+Para habilitar esse modo, siga [HOSTED-INSTALLER.md](HOSTED-INSTALLER.md), com projeto Vercel dedicado, SQL do controle, ambiente HTTPS fixo, OAuth Apps e credenciais somente do backend. **Não reutilize o banco do AGAPE.** Sem backend, `app.html` exibirá indisponibilidade, sem criar projetos.
