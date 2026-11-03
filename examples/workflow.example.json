@@ -1,0 +1,15 @@
+{
+  "owner": "usuario-da-celula",
+  "repository": "kairos-minha-celula",
+  "cellName": "Minha Célula",
+  "visibility": "private",
+  "supabaseOrgId": "org_exemplo",
+  "supabaseRef": "",
+  "supabaseRegion": "sa-east-1",
+  "vercelTeamId": "team_exemplo",
+  "vercelProjectId": "",
+  "coreDir": "C:/Projetos/kairos-minha-celula",
+  "adminLogin": "administrador",
+  "adminName": "Administrador",
+  "pwaUrl": ""
+}
