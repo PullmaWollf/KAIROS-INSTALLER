@@ -74,3 +74,28 @@ test('OAuth callback rejects replay before exchanging authorization code',async(
  assert.equal(JSON.parse(callback.body).error,'OAUTH_REPLAY');
  assert.equal(exchangeCount,0);
 });
+
+test('concurrent OAuth callbacks permit at most one provider exchange',async()=>{
+ const claimed=new Set();let exchanges=0;
+ const db={
+  async session(){return null;},
+  async claimOAuth(hash){if(claimed.has(hash))return false;claimed.add(hash);return true;},
+  async upsertUser(identity){return identity;},
+  async createSession(){return 'expires';},
+  async saveConnection(){}
+ };
+ const fetcher=async url=>{
+  if(url==='https://github.com/login/oauth/access_token'){exchanges++;return {status:200,async json(){return {access_token:'test-token-123456789'};}};}
+  if(url==='https://api.github.com/user')return {status:200,async json(){return {id:12345,login:'cliente'};}};
+  throw Error('unexpected provider');
+ };
+ const handler=createHostedHandler({env,storeFactory:()=>db,fetcher});
+ const start=createResponse();await handler(request('/api/auth/start?provider=github'),start);
+ const cookie=start.getHeader('Set-Cookie').split(';')[0];
+ const state=new URL(start.getHeader('Location')).searchParams.get('state');
+ const path='/api/auth/callback?code=abc&state='+state;
+ const a=createResponse(),b=createResponse();
+ await Promise.all([handler(request(path,{cookie}),a),handler(request(path,{cookie}),b)]);
+ assert.deepEqual([a.statusCode,b.statusCode].sort((x,y)=>x-y),[303,400]);
+ assert.equal(exchanges,1);
+});
