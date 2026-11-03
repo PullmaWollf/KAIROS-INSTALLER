@@ -187,3 +187,9 @@ npm run dev
 ---
 
 <div align="center"><strong>KAIRÓS</strong> · Sua célula, sua identidade, sua infraestrutura.</div>
+
+## Compatibilidade com o Core e liberação
+
+O Installer já executa **verificação cruzada em CI** com o repositório público do Core, conferindo API, segurança do login, migrações, bootstrap e PWA. Veja **[Contrato dos repositórios](docs/COMPATIBILITY.md)**.
+
+O bootstrap instala dependências fixadas do Core sem executar scripts de lifecycle (`npm ci --ignore-scripts`). O smoke test verifica API pública, sessão anônima, manifesto, HTML e Service Worker. Isso ainda não comprova login ADM, políticas do banco nem instalação real em celulares: siga os **[critérios de produção do Core](https://github.com/PullmaWollf/KAIROS-CORE/blob/main/docs/PRODUCTION-READINESS.md)**.
