@@ -13,8 +13,10 @@ export async function preflightSupabase({fetcher=fetch,token,organizationId}){
  const org=body.find(o=>o?.id===id);
  if(!org)throw new ProvisioningError('NOT_MEMBER','Supabase: organização não acessível pela credencial do administrador');
  otherAccount(org.name,'Organização Supabase');
+ if(!/^[a-z0-9_-]{4,64}$/i.test(String(org.slug||'')))
+  throw new ProvisioningError('BAD_RESPONSE','Supabase: slug da organização não retornado; criação bloqueada');
  // API membership alone does not prove ownership. Explicit authorization remains necessary for writes.
- return Object.freeze({provider:'supabase',organizationId:id,organizationName:String(org.name||'').slice(0,90),accessible:true,ownership:'not-verified',createsResources:false});
+ return Object.freeze({provider:'supabase',organizationId:id,organizationName:String(org.name||'').slice(0,90),organizationSlug:org.slug,accessible:true,ownership:'not-verified',createsResources:false});
 }
 export async function preflightVercel({fetcher=fetch,token,teamId}){
  const id=required(teamId,'Identificador do time Vercel');

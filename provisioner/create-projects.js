@@ -49,8 +49,8 @@ export async function createSupabaseProject({fetcher=fetch,token,plan,dbPassword
  // Membership is not proof of ownership. Consent of the account holder is mandatory.
  if(!pre.accessible)throw new ProvisioningError('NOT_MEMBER','Organização inacessível');
  const created=await postJson({fetcher,token,url:SUPABASE_API,provider:'Supabase',
-  body:{name:p.projectName,organization_id:p.organizationId,region:p.region,db_pass:dbPassword}});
- const id=created?.id;
+  body:{name:p.projectName,organization_slug:pre.organizationSlug,region:p.region,db_pass:dbPassword}});
+ const id=created?.ref;
  if(typeof id!=='string'||!/^[a-z0-9]{8,32}$/i.test(id))throw new ProvisioningError('BAD_RESPONSE','Resposta sem identificador válido; confira o projeto no painel antes de repetir');
  return {provider:'supabase',projectRef:id,organizationId:p.organizationId,projectName:p.projectName,status:'created',next:'migrations-pending'};
 }

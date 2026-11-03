@@ -19,11 +19,11 @@ test('Supabase usa somente organização da célula, e não retorna senha',async
  let calls=[];
  const fetcher=async(url,opts)=>{
   calls.push([url,opts.method,opts.body?JSON.parse(opts.body):null]);
-  return url.endsWith('/organizations')?data(200,[{id:'org_123456',name:'Comunidade'}]):data(201,{id:'abcdefghijklmno'});
+  return url.endsWith('/organizations')?data(200,[{id:'org_123456',slug:'comunidade-testes',name:'Comunidade'}]):data(201,{id:'project-id-other',ref:'abcdefghijklmno'});
  };
  const r=await createSupabaseProject({fetcher,token:'mock',plan:supabase,dbPassword:'q'.repeat(24),approved:true});
  assert.equal(calls.length,2);assert.equal(calls[0][1],'GET');assert.equal(calls[1][1],'POST');
- assert.equal(calls[1][2].organization_id,'org_123456');assert.equal(calls[1][2].db_pass,'q'.repeat(24));
+ assert.equal(calls[1][2].organization_slug,'comunidade-testes');assert.equal(calls[1][2].db_pass,'q'.repeat(24));
  assert.equal(r.projectRef,'abcdefghijklmno');assert.equal(JSON.stringify(r).includes('qqqqqq'),false);
 });
 test('Vercel usa teamId próprio e GitHub do cliente',async()=>{
@@ -41,7 +41,7 @@ test('Vercel usa teamId próprio e GitHub do cliente',async()=>{
 });
 test('falhas de rede exigem conferir painel antes de repetir',async()=>{
  const fetcher=async(url)=>{
-  if(url.endsWith('/organizations'))return data(200,[{id:'org_123456',name:'Comunidade'}]);
+  if(url.endsWith('/organizations'))return data(200,[{id:'org_123456',slug:'comunidade-testes',name:'Comunidade'}]);
   throw Error('raw secret');
  };
  await assert.rejects(createSupabaseProject({fetcher,token:'mock',plan:supabase,dbPassword:'q'.repeat(24),approved:true}),e=>e.code==='NETWORK'&&!e.message.includes('raw secret'));

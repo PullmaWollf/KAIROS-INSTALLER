@@ -5,9 +5,10 @@ import {providerGet} from '../provisioner/provider-http.js';
 const ok=(data,status=200)=>({status,async json(){return data;}});
 test('Supabase somente GET, confirma seleção e marca titularidade não verificada',async()=>{
  let calls=[];
- const fetcher=async (url,opts)=>{calls.push({url,method:opts.method});return ok([{id:'org_123456',name:'Minha Comunidade'}]);};
+ const fetcher=async (url,opts)=>{calls.push({url,method:opts.method});return ok([{id:'org_123456',slug:'comunidade-testes',name:'Minha Comunidade'}]);};
  const result=await preflightSupabase({fetcher,token:'fake-token',organizationId:'org_123456'});
  assert.equal(result.accessible,true);
+ assert.equal(result.organizationSlug,'comunidade-testes');
  assert.equal(result.ownership,'not-verified');
  assert.equal(result.createsResources,false);
  assert.deepEqual(calls,[{url:'https://api.supabase.com/v1/organizations',method:'GET'}]);
