@@ -26,6 +26,10 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
  }
  return Object.freeze({
   health:()=>list('kairos_control_users',{limit:'1'},'github_id').then(()=>true),
+  async claimOAuth(cookieHash){
+   if(!/^[a-f0-9]{64}$/.test(String(cookieHash||'')))throw new ControlError('BAD_OAUTH_CLAIM');
+   return query('/rest/v1/rpc/kairos_control_claim_oauth',{method:'POST',body:{p_cookie_hash:cookieHash}});
+  },
   async user(id){
    const rows=await list('kairos_control_users',{github_id:'eq.'+Number(id)},'github_id,login');
    return rows[0]||null;
