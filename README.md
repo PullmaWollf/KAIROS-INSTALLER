@@ -193,3 +193,16 @@ npm run dev
 O Installer já executa **verificação cruzada em CI** com o repositório público do Core, conferindo API, segurança do login, migrações, bootstrap e PWA. Veja **[Contrato dos repositórios](docs/COMPATIBILITY.md)**.
 
 O bootstrap instala dependências fixadas do Core sem executar scripts de lifecycle (`npm ci --ignore-scripts`). O smoke test verifica API pública, sessão anônima, manifesto, HTML e Service Worker. Isso ainda não comprova login ADM, políticas do banco nem instalação real em celulares: siga os **[critérios de produção do Core](https://github.com/PullmaWollf/KAIROS-CORE/blob/main/docs/PRODUCTION-READINESS.md)**.
+
+## v0.9 — Prontidão antes de homologar
+
+A versão 0.9 inclui **pré-diagnóstico local sem chamadas remotas**, recuperação de operações confirmadas com comprovantes mínimos não secretos, inspeção de migrações obrigatórias no Core, endpoint `/api/health` validado no smoke test e painel local para acompanhar a instalação (quando o servidor OAuth tiver um estado configurado).
+
+```bash
+npm run readiness:help
+node scripts/readiness.mjs --config workflow.local.json --phase github --check-core
+```
+
+O diagnóstico **não obtém credenciais automaticamente** e não habilita operações sem autorização. As etapas reais continuam dependendo de contas e permissões individuais dos provedores. Não é aprovação de produção.
+
+Veja [pré-homologação](docs/PRE-HOMOLOGATION.md) para os bloqueios que só podem ser concluídos com autorização/configuração do administrador.

@@ -90,3 +90,11 @@ Abra `http://127.0.0.1:43117`. Clique em **Conectar GitHub** e **Conectar Supaba
 ## 8. Recuperação automática somente de leitura
 
 Se uma tentativa de **deploy** ou **smoke test** ficar pendente, a próxima execução pode reconfirmar o estado via **GET**: a Vercel deve mostrar produção `READY` criada **depois da tentativa original**, e o smoke test deve continuar validando todas as rotas esperadas. Quando houver evidência suficiente, o orquestrador recupera o progresso **sem repetir POST**. Projetos GitHub/Supabase/Vercel preexistentes ainda requerem revisão humana, pois a existência de um recurso não comprova que a instalação atual o criou. Migrações, bootstrap e variáveis parcialmente aplicadas também são bloqueadas para conferência manual.
+
+## v0.9 — Prontidão e recibos de operações
+
+A rotina `scripts/readiness.mjs` analisa somente a configuração local e a presença de variáveis obrigatórias, sem acessar APIs e sem revelar segredos. O painel de `/installation` no servidor OAuth mostra as oito etapas e impedimentos de configuração, quando `KAIROS_STATE_FILE` e `KAIROS_RECOVERY_FILE` estão configurados.
+
+A recuperação aceita **comprovantes mínimos** de operações cujo sucesso já foi confirmado (nome GitHub, ref Supabase, ID Vercel ou URL do deploy). Assim, uma interrupção entre a confirmação da API e a atualização do arquivo de progresso pode ser recuperada sem repetir operações de criação. Resultados incertos permanecem bloqueados e dependem de reconciliação sem escrita.
+
+O Core agora expõe `/api/health`, que verifica tabelas, proteção de login e bucket, e o smoke test do Installer exige resposta saudável. A migração de segurança do login também é obrigatória no Core copiado.
