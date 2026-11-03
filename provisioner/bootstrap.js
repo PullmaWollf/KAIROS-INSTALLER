@@ -16,6 +16,9 @@ export async function bootstrapAdmin({plan,runner,environment={},approved=false}
  if(!environment.SUPABASE_SERVICE_ROLE_KEY||environment.SUPABASE_SERVICE_ROLE_KEY.length<20)throw new ProvisioningError('NO_AUTH','Chave privada Supabase ausente');
  if(!environment.ADMIN_PASSWORD||environment.ADMIN_PASSWORD.length<12)throw new ProvisioningError('BAD_PASSWORD','Senha ADM precisa de pelo menos 12 caracteres');
  const repo=await inspectCore({plan:{coreDir:plan.coreDir,repoOwner:plan.repoOwner},runner});
+ // Install pinned dependencies from the customer's copied Core without running npm lifecycle scripts.
+ const dependencies=await runner(process.platform==='win32'?'npm.cmd':'npm',['ci','--ignore-scripts','--no-audit','--no-fund'],{cwd:plan.coreDir,env:{}});
+ if(dependencies.code!==0)throw new ProvisioningError('DEPENDENCIES_FAILED','Dependências do Core não foram instaladas. Nenhum ADM criado; revise npm ci');
  const out=await runner('node',['scripts/create-admin.mjs'],{cwd:plan.coreDir,env:{
    SUPABASE_URL:environment.SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY:environment.SUPABASE_SERVICE_ROLE_KEY,
    ADMIN_NAME:plan.adminName,ADMIN_LOGIN:plan.adminLogin,ADMIN_PASSWORD:environment.ADMIN_PASSWORD

@@ -32,7 +32,7 @@ Somente após confirmar o destino e o SQL:
 node scripts/finalize.mjs --action migrate --execute --confirm-project <REF-SUPABASE-DA-CELULA>
 ```
 
-O wrapper verifica o `git remote` da cópia Core, confirma o arquivo de migração e roda o `supabase db push --remote=REF --dry-run` antes do `supabase db push --remote=REF --yes`. O histórico de migrações evita reaplicações, mas **não é uma transação atômica do provisionamento inteiro**. **Não faça SQL Editor e db push manual no mesmo projeto**. Não use `supabase db reset` em banco remoto.
+O wrapper verifica o `git remote` da cópia Core, confirma o arquivo de migração e roda `supabase link --project-ref REF`, `supabase db push --linked --dry-run` e `supabase db push --linked --yes`. A migração de segurança do login precisa acompanhar a migração inicial. O histórico de migrações evita reaplicações, mas **não é uma transação atômica do provisionamento inteiro**. **Não faça SQL Editor e db push manual no mesmo projeto**. Não use `supabase db reset` em banco remoto.
 
 ## 2. Variáveis privadas na Vercel
 
@@ -95,7 +95,7 @@ node scripts/finalize.mjs --action bootstrap
 node scripts/finalize.mjs --action bootstrap --execute --confirm-project <REF-SUPABASE-DA-CELULA>
 ```
 
-O instalador reutiliza `scripts/create-admin.mjs` do Core, que se recusa a criar outra conta administrativa se já existir uma. Não é um cadastro público; não registra a senha em logs. Revogue tokens temporários e retire `ADMIN_PASSWORD` do ambiente após a operação. A CLI precisa de Node e das dependências instaladas na cópia Core (`npm ci`).
+O instalador reutiliza `scripts/create-admin.mjs` do Core, que se recusa a criar outra conta administrativa se já existir uma. Não é um cadastro público; não registra a senha em logs. Revogue tokens temporários e retire `ADMIN_PASSWORD` do ambiente após a operação. A CLI precisa de Node e agora executa `npm ci --ignore-scripts --no-audit --no-fund` na cópia Core antes de criar o ADM. Se a instalação de dependências falhar, ela interrompe o processo antes do cadastro.
 
 ## 5. Smoke test do aplicativo publicado (v0.6)
 
@@ -106,6 +106,6 @@ node scripts/finalize.mjs --action smoke
 node scripts/finalize.mjs --action smoke --execute --confirm-origin https://sua-celula.vercel.app
 ```
 
-Valida `GET /api/public`, `GET /manifest.webmanifest` e se `GET /api/me` sem autenticação devolve **401**. Não testa acesso real ao ADM, RLS, Storage, banco interno ou instalação em celulares. Um resultado positivo **não significa homologação de produção**.
+Valida `GET /api/public`, `GET /manifest.webmanifest`, `GET /` (HTML principal), `GET /sw.js` (Service Worker) e se `GET /api/me` sem autenticação devolve **401**. Não testa acesso real ao ADM, RLS, Storage, banco interno ou instalação em celulares. Um resultado positivo **não significa homologação de produção**.
 
 **Correção na migração:** o fluxo correto utiliza `supabase link --project-ref <REF>`, depois `supabase db push --linked --dry-run` e `supabase db push --linked --yes`, não a opção antiga `--remote=REF`. Reconfirme o projeto no painel antes de qualquer aplicação.
