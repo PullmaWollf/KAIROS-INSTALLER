@@ -1,6 +1,6 @@
 import {ProvisioningError,TEMPLATE_OWNER} from './plan.js';
 import {providerGet} from './provider-http.js';
-const ref=/^[a-z0-9-]{4,64}$/i;
+const ref=/^[a-z0-9_-]{4,64}$/i;
 function required(value,label){if(!ref.test(String(value||'')))throw new ProvisioningError('BAD_TARGET',label+' inválido');return String(value);}
 function otherAccount(value,label){
  if(String(value||'').toLowerCase()===TEMPLATE_OWNER.toLowerCase())throw new ProvisioningError('MAINTAINER_ACCOUNT',label+' não pode ser a conta do mantenedor');
