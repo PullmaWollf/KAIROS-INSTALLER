@@ -9,6 +9,7 @@ import {preflightSupabase,preflightVercel} from '../provisioner/providers.js';
 import {configureVercelEnvironment} from '../provisioner/vercel-env.js';
 import {checkDeployment} from '../provisioner/deployment.js';
 import {smokeTest} from '../provisioner/smoke.js';
+import {reconcileGithub,reconcileSupabase,reconcileVercel} from '../provisioner/reconcile.js';
 const scrypt=promisify(scryptCb);
 const ID=/^[a-z0-9]{10,30}$/i;
 const customerUrl=ref=>'https://'+ref+'.supabase.co';
@@ -211,7 +212,29 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    await smokeTest({url:row.pwa_origin,fetcher,approved:true});
    return {status:'verified',receipt:{}};
   }
-  return {status:'needs_review',reason:'Operação pode ter sido aplicada; verificar painel antes de liberar'};
+  if(phase==='github'){
+   return reconcileGithub({fetcher,token:await token(ownerId,'github'),owner:row.owner,repository:row.repository});
+  }
+  if(phase==='supabase'){
+   return reconcileSupabase({fetcher,token:await token(ownerId,'supabase'),
+    organizationId:row.supabase_org_id,projectName:row.repository});
+  }
+  if(phase==='vercel'){
+   return reconcileVercel({fetcher,token:await token(ownerId,'vercel'),
+    teamId:row.vercel_team_id,projectName:row.repository,repository:row.owner+'/'+row.repository});
+  }
+  if(phase==='bootstrap'){
+   const credential=await secrets(row);
+   if(!credential.serviceKey)return {status:'manual-review'};
+   const admins=await restCustomer(row.supabase_ref,credential.serviceKey,
+    '/rest/v1/app_users?role=eq.admin&select=id,login&limit=2',{fetcher});
+   return Array.isArray(admins)&&admins.some(x=>x.login===row.admin_login)?
+    {status:'exists-review',reason:'ADM encontrado. Conferir a identidade no painel Supabase'}:
+    {status:'manual-review'};
+  }
+  // Migrations and environment writes may be partially applied. Only a human
+  // can acknowledge these after reviewing SQL history and the provider dashboard.
+  return {status:'manual-review',reason:'Conferência humana das alterações exigida'};
  }
  return {precheck,run,reconcile};
 }
