@@ -84,7 +84,7 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
   },
   async operations(installationId){
    if(!uuid.test(installationId||''))throw new ControlError('BAD_ID');
-   return list('kairos_control_operations',{installation_id:'eq.'+installationId,order:'started_at.asc'},'phase,status,started_at,finished_at,error_code,receipt');
+   return list('kairos_control_operations',{installation_id:'eq.'+installationId,order:'started_at.asc'},'id,phase,status,started_at,finished_at,error_code,receipt');
   },
   async claim(installationId,id,phase){
    return query('/rest/v1/rpc/kairos_control_claim',{method:'POST',

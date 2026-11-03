@@ -141,7 +141,8 @@ begin
  if p_phase='deploy' and coalesce(p_receipt->>'url','') !~ '^https://[a-z0-9-]+[.]vercel[.]app$' then return false; end if;
  update public.kairos_control_operations
  set status='confirmed',finished_at=now(),receipt=p_receipt
- where id=p_attempt and installation_id=p_installation and phase=p_phase and status='started';
+ where id=p_attempt and installation_id=p_installation and phase=p_phase
+ and (status='started' or (status='needs_review' and p_phase in ('deploy','smoke')));
  if not found then return false; end if;
  update public.kairos_control_installations set
   phase_index=phase_index+1,updated_at=now(),
