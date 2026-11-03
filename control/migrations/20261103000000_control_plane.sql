@@ -67,7 +67,7 @@ create table if not exists public.kairos_control_audit (
  id bigint generated always as identity primary key,
  installation_id uuid not null references public.kairos_control_installations(id) on delete cascade,
  phase text not null,
- event text not null check(event in ('claimed','confirmed','needs_review')),
+ event text not null check(event in ('claimed','confirmed','needs_review','manual_confirmed')),
  occurred_at timestamptz not null default now()
 );
 
@@ -142,7 +142,7 @@ begin
  update public.kairos_control_operations
  set status='confirmed',finished_at=now(),receipt=p_receipt
  where id=p_attempt and installation_id=p_installation and phase=p_phase
- and (status='started' or (status='needs_review' and p_phase in ('deploy','smoke')));
+ and status in ('started','needs_review');
  if not found then return false; end if;
  update public.kairos_control_installations set
   phase_index=phase_index+1,updated_at=now(),
@@ -197,3 +197,26 @@ begin
 end; $$;
 revoke all on function public.kairos_control_take_admin_credentials(uuid,bigint) from public,anon,authenticated;
 grant execute on function public.kairos_control_take_admin_credentials(uuid,bigint) to service_role;
+
+-- Human-confirmed recovery is an explicit, audited decision; the server must
+-- validate the provider evidence and the owner's typed authorization first.
+create or replace function public.kairos_control_confirm_review(
+ p_installation uuid,p_github_id bigint,p_phase text,p_attempt uuid,p_receipt jsonb
+) returns boolean language plpgsql security definer set search_path=''
+as $$
+declare v_status text;
+declare v_ok boolean;
+begin
+ select o.status into v_status from public.kairos_control_operations o
+ join public.kairos_control_installations i on i.id=o.installation_id
+ where o.id=p_attempt and o.installation_id=p_installation and o.phase=p_phase and i.github_id=p_github_id
+ for update of o;
+ if not found or v_status<>'needs_review' then return false; end if;
+ v_ok:=public.kairos_control_finish(p_installation,p_github_id,p_phase,p_attempt,p_receipt);
+ if not v_ok then return false; end if;
+ insert into public.kairos_control_audit(installation_id,phase,event)
+ values(p_installation,p_phase,'manual_confirmed');
+ return true;
+end; $$;
+revoke all on function public.kairos_control_confirm_review(uuid,bigint,text,uuid,jsonb) from public,anon,authenticated;
+grant execute on function public.kairos_control_confirm_review(uuid,bigint,text,uuid,jsonb) to service_role;
