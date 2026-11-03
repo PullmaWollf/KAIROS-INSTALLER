@@ -37,7 +37,8 @@ test('não sobrescreve variáveis e bloqueia repo do mantenedor',async()=>{
 test('migração exige repositório da célula e respeita dry-run',async()=>{
  assert.throws(()=>migrationPlan({projectRef:'abcdefghij',repoOwner:'PullmaWollf',coreDir:'/tmp/core'}),e=>e.code==='MAINTAINER_ACCOUNT');
  const plan=migrationPlan({projectRef:'abcdefghij',repoOwner:'celula',coreDir:'/tmp/core'});
- assert.deepEqual(plan.preview,['db','push','--remote=abcdefghij','--dry-run']);
+ assert.deepEqual(plan.link,['link','--project-ref','abcdefghij']);
+ assert.deepEqual(plan.preview,['db','push','--linked','--dry-run']);
  assert.equal(plan.apply.includes('--yes'),true);
 });
 test('deployment consulta GET e requer production READY',async()=>{

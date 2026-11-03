@@ -90,6 +90,12 @@ npm run finalize:help
 
 **[Guia completo da v0.5](docs/FINALIZE.md)**. O padrão é simulação sem acesso à rede. Operações reais exigem `--execute`, confirmação dos IDs e tokens exclusivos da célula no terminal privado.
 
+## Bootstrap e verificação do PWA (v0.6)
+
+A CLI agora disponibiliza `--action bootstrap` para criar **o primeiro ADM** executando o script de segurança do Core **na cópia local da célula**, e `--action smoke` para testar apenas endpoints públicos e a proteção de uma rota privada no endereço HTTPS `*.vercel.app`. Não envia senhas para a URL pública e não testa login com credenciais. Leia [docs/FINALIZE.md](docs/FINALIZE.md).
+
+A v0.6 também corrige o fluxo de migração Supabase: vincula explicitamente o projeto via `supabase link --project-ref` antes de `supabase db push --linked`. **As operações reais ainda dependem de homologação numa instalação isolada.**
+
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 
 Este Installer é **100% estático**. O dono do projeto pode hospedá-lo no **GitHub Pages**, sem banco, storage, tokens ou funções de servidor. Siga [o guia GitHub Pages](docs/PUBLISH.md). Cada aplicativo gerado continua usando as contas próprias da célula.
@@ -135,9 +141,10 @@ O KAIRÓS distribuído às células está em **[KAIROS-CORE](https://github.com/
 2. **v0.2** — provisionamento GitHub com confirmação local (entregue, execução real ainda não homologada).
 3. **v0.3** — verificação local read-only de organizações Supabase e times Vercel (entregue; sem deploy).
 4. **v0.4** — criação controlada dos projetos Supabase/Vercel por CLI (sem homologação real).
-5. **v0.5** — migrações, configuração de variáveis privadas e consulta de deploy por CLI local (código e testes, sem homologação real).
-6. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
-7. **v1+** — retomada segura e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
+5. **v0.5** — migrações, variáveis privadas e consulta de deploy por CLI local (sem homologação real).
+6. **v0.6** — bootstrap ADM e smoke test público sem enviar credenciais (código e testes).
+7. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
+8. **v1+** — retomada segura e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
 
 A automação integral ainda depende das APIs, escopos OAuth, termos dos serviços e regras de faturamento. Não serão utilizadas credenciais do mantenedor para criar infraestrutura de terceiros.
 

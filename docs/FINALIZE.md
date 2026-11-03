@@ -85,3 +85,27 @@ A consulta é somente leitura e retorna status e URL de um deployment de produç
 - [Supabase CLI db push](https://supabase.com/docs/reference/cli)
 - [Vercel environment variables](https://vercel.com/docs/rest-api/projects/create-one-or-more-environment-variables)
 - [Vercel deployments](https://vercel.com/docs/rest-api)
+
+## 4. Criar o primeiro administrador (v0.6)
+
+Após a migração e no computador do administrador, defina `KAIROS_CORE_DIR` (a cópia GitHub da célula), `KAIROS_GITHUB_OWNER`, `KAIROS_SUPABASE_PROJECT_REF`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` **do projeto próprio da célula**. Defina `KAIROS_ADMIN_LOGIN`, `KAIROS_ADMIN_NAME` e `ADMIN_PASSWORD` forte no ambiente **local**. Não envie senha ou chave pelo instalador web.
+
+```powershell
+node scripts/finalize.mjs --action bootstrap
+node scripts/finalize.mjs --action bootstrap --execute --confirm-project <REF-SUPABASE-DA-CELULA>
+```
+
+O instalador reutiliza `scripts/create-admin.mjs` do Core, que se recusa a criar outra conta administrativa se já existir uma. Não é um cadastro público; não registra a senha em logs. Revogue tokens temporários e retire `ADMIN_PASSWORD` do ambiente após a operação. A CLI precisa de Node e das dependências instaladas na cópia Core (`npm ci`).
+
+## 5. Smoke test do aplicativo publicado (v0.6)
+
+Defina `KAIROS_PWA_URL` como o domínio HTTPS raiz `https://sua-celula.vercel.app` de **sua própria instalação**. O fluxo não aceita destinos externos arbitrários.
+
+```powershell
+node scripts/finalize.mjs --action smoke
+node scripts/finalize.mjs --action smoke --execute --confirm-origin https://sua-celula.vercel.app
+```
+
+Valida `GET /api/public`, `GET /manifest.webmanifest` e se `GET /api/me` sem autenticação devolve **401**. Não testa acesso real ao ADM, RLS, Storage, banco interno ou instalação em celulares. Um resultado positivo **não significa homologação de produção**.
+
+**Correção na migração:** o fluxo correto utiliza `supabase link --project-ref <REF>`, depois `supabase db push --linked --dry-run` e `supabase db push --linked --yes`, não a opção antiga `--remote=REF`. Reconfirme o projeto no painel antes de qualquer aplicação.

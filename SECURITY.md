@@ -20,3 +20,7 @@ O script `npm run providers:check` usa tokens locais para requisições **GET** 
 ## v0.5 — Segurança na finalização
 
 Os módulos de migração, variáveis privadas e status usam somente tokens locais da célula. O provisionador valida a origem GitHub clonada antes de aplicar SQL; a Vercel exige identificação exata do projeto/time e vínculo GitHub da célula, e **rejeita sobrescrita de variáveis existentes**. Não registra valores secretos, ainda não faz rollback nem verifica login em ambiente real. Uma publicação `READY` é apenas estado da Vercel e não equivale a aprovação de segurança. Leia `docs/FINALIZE.md`.
+
+## v0.6 — Bootstrap e smoke tests
+
+O cadastro inicial reutiliza o script do Core exclusivamente na cópia local da célula. A confirmação exige o **ref do Supabase** e valida que `SUPABASE_URL` corresponde a ele. A senha de ADM permanece em variável de ambiente local. Os smoke tests somente realizam GET em domínio HTTPS `*.vercel.app` e **não enviam cookies ou senhas**. A execução real ainda não foi homologada em provedores independentes.
