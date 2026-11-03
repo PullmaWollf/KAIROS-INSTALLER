@@ -31,8 +31,13 @@ test('OAuth local não expõe token, recusa host falso e state inválido',async(
   const page=await fetch(base,{redirect:'manual'});
   assert.equal(page.status,200);
   const cookie=page.headers.get('set-cookie').split(';')[0];
-  const bad=await fetch(base+'/status',{headers:{Host:'evil.local',Cookie:cookie}});
-  assert.equal(bad.status,400);
+  // Node fetch can overwrite Host; verify invalid host with the low-level HTTP client.
+  const {request}=await import('node:http');
+  const badStatus=await new Promise((resolve,reject)=>{
+   const req=request({hostname:'127.0.0.1',port,path:'/status',headers:{Host:'evil.local',Cookie:cookie}},res=>{res.resume();resolve(res.statusCode);});
+   req.on('error',reject);req.end();
+  });
+  assert.equal(badStatus,400);
   const start=await fetch(base+'/connect/github',{redirect:'manual',headers:{Cookie:cookie,Referer:base+'/'}});
   assert.equal(start.status,302);
   assert.equal(new URL(start.headers.get('location')).hostname,'github.com');

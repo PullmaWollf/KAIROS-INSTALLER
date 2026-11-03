@@ -33,7 +33,7 @@ test('reconciliação Github identifica conflito sem reexecutar POST',async()=>{
  const fetcher=async(_u,o)=>{assert.equal(o.method,'GET');return result(200,{full_name:'cliente/kairos-cliente',owner:{login:'cliente'}});};
  const r=await reconcileGithub({fetcher,token:'mock',owner:'cliente',repository:'kairos-cliente'});
  assert.equal(r.status,'exists-review');
- assert.throws(()=>reconcileGithub({owner:'PullmaWollf',repository:'KAIROS-CORE'}),e=>e.code==='BAD_TARGET');
+ await assert.rejects(reconcileGithub({owner:'PullmaWollf',repository:'KAIROS-CORE'}),e=>e.code==='BAD_TARGET');
 });
 test('Supabase reconcilia por organização e nome, rejeita resultados ambíguos',async()=>{
  const fetcher=async()=>result(200,[{name:'kairos-cliente',organization_id:'org_abc123',id:'abcdefghijklmnopqrst'}]);
