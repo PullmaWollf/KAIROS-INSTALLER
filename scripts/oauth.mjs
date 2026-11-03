@@ -3,6 +3,7 @@ import {spawn} from 'node:child_process';
 import {createOAuthServer} from '../oauth/server.js';
 import {createOperations,executeNext} from '../provisioner/orchestrator.js';
 import {ProvisioningError} from '../provisioner/plan.js';
+import {statusReport} from '../provisioner/preflight.js';
 function runner(command,args,{cwd,env}={}){
  return new Promise((resolve,reject)=>{
   const child=spawn(command,args,{cwd,env:{...process.env,...env},shell:false,windowsHide:true,stdio:['ignore','pipe','pipe']});
@@ -28,7 +29,9 @@ const operator=enabled?async({consent,tokens})=>{
  return await executeNext({stateFile:process.env.KAIROS_STATE_FILE,recoveryFile:process.env.KAIROS_RECOVERY_FILE,
   env:environment,consent,ops:createOperations({runner})});
 }:null;
-const server=createOAuthServer({port,operator});
+const readiness=process.env.KAIROS_STATE_FILE&&process.env.KAIROS_RECOVERY_FILE?
+ async()=>statusReport({stateFile:process.env.KAIROS_STATE_FILE,recoveryFile:process.env.KAIROS_RECOVERY_FILE,env:process.env}):null;
+const server=createOAuthServer({port,operator,readiness});
 try{
  const url=await server.start();
  console.log('KAIRÓS OAuth local disponível em '+url);
