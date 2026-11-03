@@ -4,7 +4,7 @@ Estado: checklist de critérios, não aprovação de homologação.
 
 ## P0 — Segurança
 
-- [ ] Verificar uso único do callback OAuth no servidor, inclusive chamadas concorrentes e replay de cookie antigo.
+- [x] Implementado claim atômico de callback OAuth e testes de replay/concorrência no código; **aplicar migração e validar em banco real antes de aprovar**.
 - [ ] Validar `state`, PKCE, vinculação da sessão e rotação/revogação de credenciais.
 - [ ] Testar CSRF, origem, cookies seguros, autorização por usuário e isolamento entre instalações.
 - [ ] Confirmar que tokens e senhas não aparecem em logs, erros ou respostas não autorizadas.
@@ -30,3 +30,9 @@ Estado: checklist de critérios, não aprovação de homologação.
 ## Gate final
 
 Uma instalação real em contas de laboratório de GitHub, Supabase e Vercel deve concluir Core, banco, ADM, deploy e smoke. O AGAPE original não pode ser usado como ambiente de controle. Sem essas evidências, o estado permanece **pré-homologação**.
+
+## Implantação da correção OAuth
+
+Aplicar `control/migrations/20261103000001_oauth_claims.sql` **após** `20261103000000_control_plane.sql` somente no Supabase dedicado ao Installer. O backend exige a RPC `kairos_control_claim_oauth`; sem a migração o callback falha fechado e o login não conclui. Implantar banco antes do código, sem misturar com o projeto AGAPE.
+
+A tabela de claims acumula hashes sem tokens. Planejar limpeza periódica de registros expirados (`expires_at < now()`) por tarefa administrativa autenticada, sem reintroduzir aceitação de callbacks expirados. O callback verifica expiração do cookie antes do claim.
