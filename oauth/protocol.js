@@ -7,13 +7,13 @@ export function safeEqual(a,b){
  return x.length===y.length&&timingSafeEqual(x,y);
 }
 export function providerConfig(provider,env=process.env){
- if(!['github','supabase'].includes(provider))throw new ProvisioningError('PROVIDER_UNAVAILABLE','OAuth deste provedor ainda não habilitado');
- const prefix=provider==='github'?'GITHUB':'SUPABASE';
+ if(!['github','supabase','vercel'].includes(provider))throw new ProvisioningError('PROVIDER_UNAVAILABLE','OAuth deste provedor ainda não habilitado');
+ const prefix=provider.toUpperCase();
  const clientId=env['KAIROS_'+prefix+'_CLIENT_ID'],clientSecret=env['KAIROS_'+prefix+'_CLIENT_SECRET'];
  if(!ascii.test(clientId||'')||!clientSecret||clientSecret.length<12)throw new ProvisioningError('OAUTH_NOT_CONFIGURED','Configure seu aplicativo OAuth '+provider+' no ambiente local');
  return {clientId,clientSecret,provider,
-  authorizationUrl:provider==='github'?'https://github.com/login/oauth/authorize':'https://api.supabase.com/v1/oauth/authorize',
-  tokenUrl:provider==='github'?'https://github.com/login/oauth/access_token':'https://api.supabase.com/v1/oauth/token'};
+  authorizationUrl:provider==='github'?'https://github.com/login/oauth/authorize':provider==='vercel'?'https://vercel.com/oauth/authorize':'https://api.supabase.com/v1/oauth/authorize',
+  tokenUrl:provider==='github'?'https://github.com/login/oauth/access_token':provider==='vercel'?'https://api.vercel.com/login/oauth/token':'https://api.supabase.com/v1/oauth/token'};
 }
 export function beginAuthorization({provider,callbackUrl,config,now=Date.now()}){
  const state=randomBytes(32).toString('base64url');
@@ -27,6 +27,7 @@ export function beginAuthorization({provider,callbackUrl,config,now=Date.now()})
  url.searchParams.set('code_challenge',challenge);
  url.searchParams.set('code_challenge_method','S256');
  if(provider==='github')url.searchParams.set('scope','repo');
+ if(provider==='vercel')url.searchParams.set('scope','openid email profile offline_access');
  return {url:url.toString(),transaction:{provider,state,verifier,callbackUrl,expiresAt:now+600000}};
 }
 export async function exchangeCode({transaction,code,config,fetcher=fetch}){
@@ -38,6 +39,7 @@ export async function exchangeCode({transaction,code,config,fetcher=fetch}){
   auth='Basic '+Buffer.from(config.clientId+':'+config.clientSecret).toString('base64');
  }else{
   body.set('client_id',config.clientId);body.set('client_secret',config.clientSecret);
+  if(transaction.provider==='vercel')body.set('grant_type','authorization_code');
  }
  let response;
  try{
