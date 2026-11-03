@@ -1,6 +1,6 @@
 import {ProvisioningError,TEMPLATE_OWNER} from './plan.js';
 import {stat,readFile} from 'node:fs/promises';
-import {join,resolve,basename} from 'node:path';
+import {join,resolve} from 'node:path';
 const ref=/^[a-z0-9]{10,30}$/;
 const baseline='20261103000000_kairos_initial.sql';
 export function migrationPlan({projectRef,repoOwner,coreDir}){
@@ -8,7 +8,7 @@ export function migrationPlan({projectRef,repoOwner,coreDir}){
  if(!/^[a-z\d][a-z\d-]{0,38}$/i.test(repoOwner||''))throw new ProvisioningError('BAD_OWNER','GitHub owner inválido');
  if(repoOwner.toLowerCase()===TEMPLATE_OWNER.toLowerCase())throw new ProvisioningError('MAINTAINER_ACCOUNT','Não execute no Core original do mantenedor');
  if(!coreDir||typeof coreDir!=='string')throw new ProvisioningError('BAD_DIR','Informe a pasta local do Core clonado');
- return Object.freeze({projectRef,repoOwner,coreDir:resolve(coreDir),preview:['db','push','--remote='+projectRef,'--dry-run'],apply:['db','push','--remote='+projectRef,'--yes'],mode:'dry-run'});
+ return Object.freeze({projectRef,repoOwner,coreDir:resolve(coreDir),link:['link','--project-ref',projectRef],preview:['db','push','--linked','--dry-run'],apply:['db','push','--linked','--yes'],mode:'dry-run'});
 }
 export async function inspectCore({plan,runner}){
  const file=join(plan.coreDir,'supabase','migrations',baseline);
@@ -27,6 +27,8 @@ export async function inspectCore({plan,runner}){
 export async function migrateSupabase({plan,runner,approved=false,environment={}}){
  await inspectCore({plan,runner});
  if(!environment.SUPABASE_ACCESS_TOKEN||!environment.SUPABASE_DB_PASSWORD)throw new ProvisioningError('NO_AUTH','Forneça credenciais temporárias Supabase apenas no terminal local');
+ const linked=await runner('supabase',plan.link,{cwd:plan.coreDir,env:environment});
+ if(linked.code!==0)throw new ProvisioningError('LINK_FAILED','Não foi possível vincular o projeto Supabase informado; nenhuma migração aplicada');
  const preview=await runner('supabase',plan.preview,{cwd:plan.coreDir,env:environment});
  if(preview.code!==0)throw new ProvisioningError('MIGRATION_PREVIEW_FAILED','Falha no dry-run. Verifique no terminal e no painel Supabase');
  if(!approved)return {status:'preview-complete',projectRef:plan.projectRef,applied:false};
