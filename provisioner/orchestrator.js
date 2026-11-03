@@ -46,7 +46,7 @@ export function createOperations({fetcher=fetch,runner}={}){
    }
    if(phase==='bootstrap'&&e.SUPABASE_URL!=='https://'+c.supabaseRef+'.supabase.co')throw new ProvisioningError('WRONG_SUPABASE','URL Supabase difere do ref escolhido');
   },
-  async run(phase,c,e){
+  async run(phase,c,e,context={}){
    if(phase==='github'){
     const p={owner:c.owner,repository:c.repository,cellName:c.cellName,visibility:c.visibility};
     await preflightGithub({fetcher,token:e.GITHUB_TOKEN,plan:p});
@@ -65,6 +65,9 @@ export function createOperations({fetcher=fetch,runner}={}){
    if(phase==='deploy'){
     const d=await checkDeployment({fetcher,token:e.VERCEL_TOKEN,target:{teamId:c.vercelTeamId,projectId:c.vercelProjectId}});
     if(!d.ready||!d.url)throw new ProvisioningError('DEPLOY_WAITING','Aguarde deployment de produção READY após configuração das variáveis');
+    const after=Date.parse(context.state?.steps?.env?.at||'');
+    if(!Number.isFinite(after)||!Number.isFinite(d.createdAt)||d.createdAt<=after)
+     throw new ProvisioningError('DEPLOY_TOO_OLD','Deploy de produção não comprovado após configuração das variáveis. Reimplante e confira o horário');
     return d;
    }
    if(phase==='smoke')return await smokeTest({fetcher,url:c.pwaUrl,approved:true});
@@ -108,7 +111,7 @@ export async function executeNext({stateFile,recoveryFile,env={},consent={},ops=
  const started=beginOperation(recovery,phase);
  await writeRecovery(recoveryFile,started,{expected:recovery});
  let result;
- try{result=await ops.run(phase,state.config,env);}
+ try{result=await ops.run(phase,state.config,env,{state});}
  catch(e){
   const uncertain=settleOperation(started,phase,{confirmed:false});
   await writeRecovery(recoveryFile,uncertain,{expected:started});

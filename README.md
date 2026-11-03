@@ -106,6 +106,19 @@ npm run workflow:help
 
 Leia o guia [Workflow v0.7](docs/WORKFLOW.md) para iniciar, continuar após interrupções e conferir o próximo passo. As operações reais continuam exigindo os comandos específicos do provisionador com consentimento. Uma marcação `attested` é apenas declaração do administrador, não homologação.
 
+## v0.8 — OAuth local, execução encadeada e recuperação conservadora
+
+**Três frentes técnicas iniciadas:** (1) OAuth no navegador **local** para GitHub e Supabase, utilizando PKCE, state, cookies HttpOnly e tokens apenas em memória; (2) comando `scripts/operate.mjs` para tentar percorrer as oito fases em sequência, com confirmação explícita de contas/custos; (3) reconciliação **somente por leitura** e registro de tentativas antes dos efeitos externos para bloquear duplicidades depois de falhas.
+
+```bash
+npm run oauth:local
+npm run operate:help
+```
+
+Consulte **[Guia técnico da v0.8](docs/AUTOMATION-V08.md)**. O modo padrão não acessa a rede nem cria recursos.
+
+**Limites importantes:** as sessões OAuth locais ainda **não estão ligadas** à CLI de provisionamento; a operação por CLI continua usando tokens locais no ambiente. É necessário registrar aplicativos OAuth nos provedores, e a conexão Vercel exigirá integração própria. O fluxo integrado ainda exige a cópia Core clonada para aplicar migrações e aguarda deploy atualizado; não existe instalação de um clique nem homologação real.
+
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 
 Este Installer é **100% estático**. O dono do projeto pode hospedá-lo no **GitHub Pages**, sem banco, storage, tokens ou funções de servidor. Siga [o guia GitHub Pages](docs/PUBLISH.md). Cada aplicativo gerado continua usando as contas próprias da célula.
@@ -154,8 +167,9 @@ O KAIRÓS distribuído às células está em **[KAIROS-CORE](https://github.com/
 5. **v0.5** — migrações, variáveis privadas e consulta de deploy por CLI local (sem homologação real).
 6. **v0.6** — bootstrap ADM e smoke test público sem enviar credenciais (código e testes).
 7. **v0.7** — acompanhamento das oito etapas, retomada, bloqueio de ordem e registro local sem segredos (código e testes).
-8. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
-9. **v1+** — automação ponta a ponta e integração com servidor seguro e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
+8. **v0.8** — execução sequencial opt-in, OAuth local GitHub/Supabase e recuperação fail-closed (código e testes; sem homologação real).
+9. **v1** — OAuth hospedado e integrado consentido com provedores, validação de custos e provisionamento nas contas do cliente.
+10. **v1+** — automação ponta a ponta e integração com servidor seguro e smoke tests completos idempotentes, testes de deploy, tratamento de erros e retomada segura.
 
 A automação integral ainda depende das APIs, escopos OAuth, termos dos serviços e regras de faturamento. Não serão utilizadas credenciais do mantenedor para criar infraestrutura de terceiros.
 

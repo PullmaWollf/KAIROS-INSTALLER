@@ -14,5 +14,5 @@ export async function checkDeployment({fetcher=fetch,token,target}){
  if(!latest)return {projectId,teamId,status:'no-production-deployment',ready:false};
  const state=String(latest.readyState||'UNKNOWN');
  const url=typeof latest.url==='string'&&/^[a-z\d.-]+\.vercel\.app$/i.test(latest.url)?'https://'+latest.url:null;
- return {projectId,teamId,status:state,ready:state==='READY',url,warning:state==='READY'?'Verifique manualmente API, login e permissões antes de divulgar':'Aguarde a publicação ou verifique erros no painel'};
+ return {projectId,teamId,status:state,ready:state==='READY',url,createdAt:Number.isFinite(latest.createdAt)?latest.createdAt:null,warning:state==='READY'?'Verifique manualmente API, login e permissões antes de divulgar':'Aguarde a publicação ou verifique erros no painel'};
 }

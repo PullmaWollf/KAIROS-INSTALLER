@@ -3,7 +3,7 @@ import {randomBytes} from 'node:crypto';
 import {ProvisioningError} from '../provisioner/plan.js';
 import {beginAuthorization,exchangeCode,providerConfig,safeEqual} from './protocol.js';
 function cookies(header=''){return Object.fromEntries(header.split(';').map(s=>s.trim().split('=').slice(0,2)).filter(x=>x.length===2));}
-function headers(res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");}
+function headers(res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");}
 function respond(res,code,body,type='text/plain; charset=utf-8'){res.writeHead(code,{'Content-Type':type});res.end(body);}
 export function createOAuthServer({env=process.env,fetcher=fetch,port=43117}={}){
  const sessions=new Map();

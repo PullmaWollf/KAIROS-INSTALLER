@@ -24,3 +24,9 @@ Os módulos de migração, variáveis privadas e status usam somente tokens loca
 ## v0.6 — Bootstrap e smoke tests
 
 O cadastro inicial reutiliza o script do Core exclusivamente na cópia local da célula. A confirmação exige o **ref do Supabase** e valida que `SUPABASE_URL` corresponde a ele. A senha de ADM permanece em variável de ambiente local. Os smoke tests somente realizam GET em domínio HTTPS `*.vercel.app` e **não enviam cookies ou senhas**. A execução real ainda não foi homologada em provedores independentes.
+
+## v0.8 — OAuth local e operações recuperáveis
+
+O serviço OAuth experimental escuta **exclusivamente 127.0.0.1**, usa state aleatório, PKCE S256, sessão HttpOnly SameSite=Lax e redirecionamentos pré-definidos. Tokens de GitHub e Supabase ficam apenas em memória e não são expostos por endpoints HTTP. É uma prova de integração **local**, não um serviço público multicliente; não implemente acesso remoto por túnel, proxy ou host 0.0.0.0. Cada provedor requer client ID/secret próprios para ambiente de teste. OAuth da Vercel exige integração registrada e não foi ativado.
+
+O orquestrador v0.8 registra tentativas **antes** de qualquer operação externa. Após timeout, crash ou erro de POST, evita repetição automática e devolve estado `needs-review`. A reconciliação lê recursos existentes, mas não prova que pertencem à tentativa anterior: só o administrador pode liberar uma revisão. O registro não é um banco distribuído e não garante rollback, deduplicação transacional nem sucesso após crash. Nunca armazene tokens/segredos no JSON de instalação.

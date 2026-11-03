@@ -7,3 +7,4 @@ node_modules/
 installation-plan.json
 .kairos-install/
 workflow.local.json
+oauth.local.json
