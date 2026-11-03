@@ -5,7 +5,7 @@ import {beginAuthorization,exchangeCode,providerConfig,safeEqual} from './protoc
 function cookies(header=''){return Object.fromEntries(header.split(';').map(s=>s.trim().split('=').slice(0,2)).filter(x=>x.length===2));}
 function headers(res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");}
 function respond(res,code,body,type='text/plain; charset=utf-8'){res.writeHead(code,{'Content-Type':type});res.end(body);}
-export function createOAuthServer({env=process.env,fetcher=fetch,port=43117}={}){
+export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,operator=null}={}){
  const sessions=new Map();
  const MAX_SESSIONS=8,MAX_TTL=30*60*1000;
  let base;
@@ -23,13 +23,14 @@ export function createOAuthServer({env=process.env,fetcher=fetch,port=43117}={})
     if(!session){
      if(sessions.size>=MAX_SESSIONS)return respond(res,429,'Limite de sessões atingido');
      const key=randomBytes(32).toString('base64url');
-     session={createdAt:Date.now(),pending:new Map(),tokens:new Map()};
+     session={createdAt:Date.now(),pending:new Map(),tokens:new Map(),csrf:randomBytes(24).toString('base64url')};
      sessions.set(key,session);
      res.setHeader('Set-Cookie','kairos_sid='+key+'; HttpOnly; SameSite=Lax; Path=/; Max-Age=1800');
     }
     const configured=['github','supabase'].filter(p=>{try{providerConfig(p,env);return true;}catch{return false;}});
     const enabled=configured.map(p=>'<li><a href="/connect/'+p+'">Conectar '+p+'</a></li>').join('');
-    const html='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAIRÓS — OAuth local</title><body><h1>KAIRÓS — Conexões locais</h1><p>Autorizações somente nesta máquina. Tokens em memória, nunca no navegador ou disco.</p><ul>'+enabled+'</ul><p>Provedores conectados: consulte <a href="/status">status</a>.</p><p>Vercel exige integração registrada; ainda não disponível neste fluxo.</p></body></html>';
+    const form=operator?'<h2>Executar próxima etapa</h2><p>O destino e os custos precisam ser confirmados a cada operação. A Vercel ainda exige token local.</p><form action="/operate" method="post"><input type="hidden" name="csrf" value="'+session.csrf+'"><p><label>GitHub da célula <input name="owner" required autocomplete="off"></label></p><p><label>Organização Supabase <input name="organizationId" required autocomplete="off"></label></p><p><label>Time Vercel <input name="teamId" required autocomplete="off"></label></p><p><label><input type="checkbox" name="acceptBilling" value="yes" required> Confirmo os destinos e possíveis cobranças na MINHA conta</label></p><button type="submit">Executar próxima etapa autorizada</button></form>':'<p>Operações pelo navegador desabilitadas até configurar KAIROS_ENABLE_LOCAL_OPERATIONS=1.</p>';
+    const html='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAIRÓS — OAuth local</title><body><h1>KAIRÓS — Conexões locais</h1><p>Autorizações somente nesta máquina. Tokens em memória, nunca no navegador ou disco.</p><ul>'+enabled+'</ul><p>Provedores conectados: consulte <a href="/status">status</a>.</p><p>Vercel exige integração registrada; ainda não disponível neste fluxo.</p>'+form+'</body></html>';
     return respond(res,200,html,'text/html; charset=utf-8');
    }
    if(!session)return respond(res,401,'Abra primeiro a página inicial do instalador local');
@@ -57,6 +58,23 @@ export function createOAuthServer({env=process.env,fetcher=fetch,port=43117}={})
     const token=await exchangeCode({transaction:pending,code:u.searchParams.get('code'),config,fetcher});
     session.tokens.set(provider,token);
     return respond(res,200,'Conexão '+provider+' concluída. Pode fechar esta aba. Tokens permanecem apenas na memória local.');
+   }
+   if(u.pathname==='/operate'&&req.method==='POST'){
+    if(!operator)return respond(res,501,'Execução local não configurada');
+    if(req.headers.origin!==base)return respond(res,403,'Origem não autorizada');
+    if(!String(req.headers['content-type']||'').startsWith('application/x-www-form-urlencoded'))return respond(res,415,'Formato inválido');
+    let raw='';
+    try{
+     for await(const chunk of req){raw+=chunk.toString('utf8');if(raw.length>4096)return respond(res,413,'Formulário grande demais');}
+    }catch{return respond(res,400,'Não foi possível ler formulário');}
+    const data=new URLSearchParams(raw);
+    if(!safeEqual(data.get('csrf'),session.csrf))return respond(res,403,'Confirmação CSRF inválida');
+    if(data.get('acceptBilling')!=='yes')return respond(res,403,'Aceite de custos necessário');
+    const consent={execute:true,acceptBilling:true,owner:data.get('owner'),organizationId:data.get('organizationId'),teamId:data.get('teamId')};
+    const tokens={github:session.tokens.get('github')?.accessToken,supabase:session.tokens.get('supabase')?.accessToken};
+    // Never expose token values to the response; execution and provider calls stay server-side.
+    const result=await operator({consent,tokens});
+    return respond(res,200,JSON.stringify(result),'application/json; charset=utf-8');
    }
    if(u.pathname==='/disconnect'&&req.method==='POST'){
     if(req.headers.origin!==base)return respond(res,403,'Origem inválida');
