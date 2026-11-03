@@ -25,6 +25,11 @@ try{
  need(api.includes('readinessCheck')&&core.includes('readinessCheck'),'verificação de saúde do Core');
  need(/create table if not exists public\.app_users/i.test(sql)&&/enable row level security/i.test(sql),'esquema app_users e RLS');
  need(/function public\.kairos_login_guard/i.test(guard)&&/grant execute on function/i.test(guard),'migração de controle de acesso');
+ const [pinnedInitial,pinnedGuard]=await Promise.all([
+  readFile(new URL('../control/core-migrations/20261103000000_kairos_initial.sql',import.meta.url),'utf8'),
+  readFile(new URL('../control/core-migrations/20261103010000_kairos_login_throttle.sql',import.meta.url),'utf8')
+ ]);
+ need(sql===pinnedInitial&&guard===pinnedGuard,'migrações congeladas no Installer iguais às auditadas no Core');
  for(const name of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','ADMIN_PASSWORD','ADMIN_LOGIN'])
   need(admin.includes(name),'bootstrap '+name);
  need(routing.rewrites?.some(x=>x.source==='/manifest.webmanifest'&&String(x.destination).includes('route=manifest')),'rota de manifesto PWA');
