@@ -88,3 +88,26 @@ test('read-only smoke recovery reconcilia sem repetir operações externas',asyn
   assert.equal((await readJournal(s.stateFile)).steps.smoke.state,'verified');
  }finally{await rm(s.dir,{recursive:true,force:true});}
 });
+
+test('recupera crash entre sucesso remoto e escrita de progresso sem novo POST',async()=>{
+ const s=await setup();let writes=0;
+ try{
+  const r=newRecovery(config);
+  const begun=beginOperation(r,'github');
+  const confirmed=settleOperation(begun,'github',{confirmed:true,receipt:{repository:'cliente/kairos-cliente'}});
+  await writeRecovery(s.recoveryFile,confirmed,{initial:true});
+  const ops={async run(){writes++},async precheck(){writes++},async reconcile(){writes++}};
+  const out=await executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,consent,ops});
+  assert.equal(out.status,'recovered');assert.equal(out.source,'durable-receipt');
+  assert.equal(out.remoteWrites,0);assert.equal(writes,0);
+  assert.equal(nextPhase(await readJournal(s.stateFile)),'supabase');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
+test('comprovante com destino diferente bloqueia recuperação',async()=>{
+ const s=await setup();
+ try{
+  const r=newRecovery(config),begun=beginOperation(r,'github');
+  await writeRecovery(s.recoveryFile,settleOperation(begun,'github',{confirmed:true,receipt:{repository:'outra/celula'}}),{initial:true});
+  await assert.rejects(executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,consent}),e=>e.code==='WRONG_SCOPE');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});

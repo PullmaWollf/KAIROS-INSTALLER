@@ -13,6 +13,28 @@ import {smokeTest} from './smoke.js';
 import {cloneCore,validateCloneDestination} from './local-core.js';
 import {reconcileGithub,reconcileSupabase,reconcileVercel} from './reconcile.js';
 
+function receiptFor(phase,result,c){
+ if(phase==='github')return {repository:c.owner+'/'+c.repository};
+ if(phase==='supabase')return {projectRef:result.projectRef};
+ if(phase==='vercel')return {projectId:result.projectId};
+ if(phase==='deploy')return {url:result.url};
+ return {};
+}
+function restoreFromReceipt(state,phase,receipt){
+ if(!receipt)throw new ProvisioningError('STATE_DRIFT','Operação confirmada sem comprovante persistido; precisa de revisão');
+ if(phase==='github'&&receipt.repository?.toLowerCase()!==(state.config.owner+'/'+state.config.repository).toLowerCase())
+  throw new ProvisioningError('WRONG_SCOPE','Comprovante GitHub pertence a outro destino');
+ if(phase==='supabase'&&state.config.supabaseRef&&state.config.supabaseRef!==receipt.projectRef)
+  throw new ProvisioningError('WRONG_SCOPE','Comprovante Supabase diferente do destino registrado');
+ if(phase==='vercel'&&state.config.vercelProjectId&&state.config.vercelProjectId!==receipt.projectId)
+  throw new ProvisioningError('WRONG_SCOPE','Comprovante Vercel diferente do destino registrado');
+ if(phase==='deploy'&&state.config.pwaUrl&&state.config.pwaUrl!==receipt.url)
+  throw new ProvisioningError('WRONG_SCOPE','Comprovante de deploy diferente do destino registrado');
+ if(phase==='supabase')state=updateTargets(state,{supabaseRef:receipt.projectRef});
+ if(phase==='vercel')state=updateTargets(state,{vercelProjectId:receipt.projectId});
+ if(phase==='deploy')state=updateTargets(state,{pwaUrl:receipt.url});
+ return state;
+}
 export function guardConsent(config,consent){
  if(!consent?.execute||!consent?.acceptBilling||
   consent.owner!==config.owner||consent.organizationId!==config.supabaseOrgId||consent.teamId!==config.vercelTeamId)
@@ -131,7 +153,12 @@ export async function executeNext({stateFile,recoveryFile,env={},consent={},ops=
  const previous=recoveryStatus(recovery,phase);
  if(previous!=='never-attempted'){
   // Reconcile only read-only. Even if matching resource exists, don't claim it was created by us.
-  if(previous==='confirmed')throw new ProvisioningError('STATE_DRIFT','Operação confirmada, mas etapa ausente no progresso. Inspecione antes de continuar');
+  if(previous==='confirmed'){
+   const updated=restoreFromReceipt(state,phase,recovery.operations[phase].receipt);
+   const next=completePhase(updated,phase,{verified:phase==='smoke'});
+   await writeJournal(stateFile,next,{expected:state});
+   return {status:'recovered',phase,next:nextPhase(next),remoteWrites:0,source:'durable-receipt'};
+  }
   operationEnvironment(phase,env);
   let finding;
   try{finding=await ops.reconcile(phase,state.config,env,{state,recovery});}
@@ -161,7 +188,7 @@ export async function executeNext({stateFile,recoveryFile,env={},consent={},ops=
  if(phase==='vercel')updated=updateTargets(updated,{vercelProjectId:result.projectId});
  if(phase==='deploy')updated=updateTargets(updated,{pwaUrl:result.url});
  // No secrets, response bodies or access tokens written in either journal.
- const completed=settleOperation(started,phase,{confirmed:true,outcome:phase==='smoke'?'smoke-checked':'provider-confirmed'});
+ const completed=settleOperation(started,phase,{confirmed:true,outcome:phase==='smoke'?'smoke-checked':'provider-confirmed',receipt:receiptFor(phase,result,state.config)});
  await writeRecovery(recoveryFile,completed,{expected:started});
  const next=completePhase(updated,phase,{verified:phase==='smoke'});
  await writeJournal(stateFile,next,{expected:state});

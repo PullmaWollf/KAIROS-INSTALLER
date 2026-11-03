@@ -10,14 +10,31 @@ export function newRecovery(config){
  if(Object.values(scope).some(x=>typeof x!=='string'||!x))throw new ProvisioningError('BAD_TARGET','Destinos obrigatórios ausentes');
  return {version:1,scope,fingerprint:fingerprint(scope),operations:{}};
 }
+const receiptKeys={github:['repository'],supabase:['projectRef'],migrate:[],vercel:['projectId'],env:[],bootstrap:[],deploy:['url'],smoke:[]};
+function safeReceipt(phase,receipt){
+ if(receipt===undefined)return undefined;
+ if(!receipt||typeof receipt!=='object'||Array.isArray(receipt))throw new ProvisioningError('BAD_RECOVERY','Comprovante inválido');
+ const keys=Object.keys(receipt),allowed=receiptKeys[phase]||[];
+ if(keys.length!==allowed.length||keys.some(k=>!allowed.includes(k)))throw new ProvisioningError('BAD_RECOVERY','Comprovante contém campo não permitido');
+ for(const [k,v] of Object.entries(receipt)){
+  if(typeof v!=='string'||v.length>250||!v)throw new ProvisioningError('BAD_RECOVERY','Comprovante contém valor inválido');
+  if(k==='repository'&&!/^[a-z0-9-]{1,39}\/[a-z0-9._-]{1,100}$/i.test(v))throw new ProvisioningError('BAD_RECOVERY','Repositório inválido');
+  if(k==='projectRef'&&!/^[a-z0-9]{10,30}$/i.test(v))throw new ProvisioningError('BAD_RECOVERY','Project ref inválido');
+  if(k==='projectId'&&!/^prj_[a-z0-9_-]{4,100}$/i.test(v))throw new ProvisioningError('BAD_RECOVERY','Project ID inválido');
+  if(k==='url'&&!/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(v))throw new ProvisioningError('BAD_RECOVERY','Domínio do deploy inválido');
+ }
+ return receipt;
+}
 export function validateRecovery(data){
  if(!data||data.version!==1||!data.scope||data.fingerprint!==fingerprint(data.scope)||typeof data.operations!=='object'||Array.isArray(data.operations))
   throw new ProvisioningError('BAD_RECOVERY','Registro de recuperação inválido');
  if(Object.keys(data).some(k=>!['version','scope','fingerprint','operations'].includes(k)))throw new ProvisioningError('BAD_RECOVERY','Registro contém campos inesperados');
  for(const [name,e] of Object.entries(data.operations)){
   if(!kinds.includes(name)||!e||!['started','confirmed','needs-review'].includes(e.status)||!Number.isInteger(e.at)||
-  Object.keys(e).some(k=>!['status','at','outcome'].includes(k))||e.outcome!==undefined&&!['manual','provider-confirmed','smoke-checked'].includes(e.outcome))
+  Object.keys(e).some(k=>!['status','at','outcome','receipt'].includes(k))||e.outcome!==undefined&&!['manual','provider-confirmed','smoke-checked'].includes(e.outcome))
    throw new ProvisioningError('BAD_RECOVERY','Etapa de recuperação inválida');
+  if(e.receipt!==undefined){if(e.status!=='confirmed')throw new ProvisioningError('BAD_RECOVERY','Comprovante exige confirmação');
+   safeReceipt(name,e.receipt);}
  }
  return data;
 }
@@ -28,10 +45,10 @@ export function beginOperation(data,name,now=Date.now()){
  r.operations[name]={status:'started',at:now};
  return r;
 }
-export function settleOperation(data,name,{confirmed=false,outcome='provider-confirmed',now=Date.now()}={}){
+export function settleOperation(data,name,{confirmed=false,outcome='provider-confirmed',receipt,now=Date.now()}={}){
  const r=structuredClone(validateRecovery(data));
  if(!['started','needs-review'].includes(r.operations[name]?.status))throw new ProvisioningError('BAD_ORDER','Nenhuma tentativa pendente para reconciliar');
- r.operations[name]={status:confirmed?'confirmed':'needs-review',at:now,...(confirmed?{outcome}:{})};
+ r.operations[name]={status:confirmed?'confirmed':'needs-review',at:now,...(confirmed?{outcome,...(receipt!==undefined?{receipt:safeReceipt(name,receipt)}:{})}:{})};
  return validateRecovery(r);
 }
 export function recoveryStatus(data,name){

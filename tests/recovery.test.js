@@ -48,3 +48,10 @@ test('Vercel só aceita projeto no time e repo exatos',async()=>{
  assert.equal(r.status,'exists-review');
  await assert.rejects(reconcileVercel({fetcher:async()=>result(200,{id:'prj_abcdefgh',name:'kairos-cliente',accountId:'other',link:{type:'github',repo:'cliente/kairos-cliente'}}),token:'mock',teamId:'team_abc123',projectName:'kairos-cliente',repository:'cliente/kairos-cliente'}),e=>e.code==='WRONG_OWNER');
 });
+
+test('receipt só inclui identificadores não secretos autorizados por etapa',()=>{
+ const r=beginOperation(newRecovery(config),'supabase');
+ assert.throws(()=>settleOperation(r,'supabase',{confirmed:true,receipt:{projectRef:'abcdefghijklmnop',token:'secret'}}),e=>e.code==='BAD_RECOVERY');
+ const ok=settleOperation(r,'supabase',{confirmed:true,receipt:{projectRef:'abcdefghijklmnop'}});
+ assert.equal(ok.operations.supabase.receipt.projectRef,'abcdefghijklmnop');
+});
