@@ -1,0 +1,66 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {newWorkflow,nextPhase} from '../provisioner/workflow.js';
+import {writeJournal,readJournal} from '../provisioner/journal.js';
+import {readRecovery,recoveryStatus} from '../provisioner/recovery.js';
+import {executeNext,executeSequence} from '../provisioner/orchestrator.js';
+const config={owner:'cliente',repository:'kairos-cliente',cellName:'Célula Cliente',visibility:'private',
+ supabaseOrgId:'org_abc123',supabaseRef:'',supabaseRegion:'sa-east-1',vercelTeamId:'team_abc123',vercelProjectId:'',
+ coreDir:'/tmp/core-cliente',adminLogin:'admin-cliente',adminName:'Administrador',pwaUrl:''};
+const consent={execute:true,acceptBilling:true,owner:'cliente',organizationId:'org_abc123',teamId:'team_abc123'};
+async function setup(){
+ const dir=await mkdtemp(join(tmpdir(),'kairos-orchestrator-'));
+ const stateFile=join(dir,'state.json'),recoveryFile=join(dir,'operations.json');
+ await writeJournal(stateFile,newWorkflow(config),{initial:true});
+ return {dir,stateFile,recoveryFile};
+}
+test('dry-run não chama provedor nem cria recovery',async()=>{
+ const s=await setup();
+ try{
+  const ops={precheck(){throw Error('should not run')},run(){throw Error('should not run')}};
+  const r=await executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,ops});
+  assert.equal(r.status,'dry-run');
+  assert.equal(nextPhase(await readJournal(s.stateFile)),'github');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
+test('criação confirmada avança e armazena somente estágio, sem token',async()=>{
+ const s=await setup();
+ try{
+  const ops={async precheck(){},async run(){return {repository:'cliente/kairos-cliente'}},async reconcile(){throw Error('not called')}};
+  const r=await executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,ops,env:{GITHUB_TOKEN:'secret-to-never-store'},consent});
+  assert.equal(r.status,'recorded');
+  const saved=await readRecovery(s.recoveryFile);
+  assert.equal(recoveryStatus(saved,'github'),'confirmed');
+  assert.equal(JSON.stringify(saved).includes('secret-to-never-store'),false);
+  assert.equal(nextPhase(await readJournal(s.stateFile)),'supabase');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
+test('falha remota não repete operações no resume, reconcilia somente leitura',async()=>{
+ const s=await setup();let calls=0,reads=0;
+ try{
+  const ops={async precheck(){},async run(){calls++;throw Error('timeout after POST');},async reconcile(){reads++;return {status:'exists-review'}}};
+  const first=await executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,ops,consent});
+  assert.equal(first.status,'needs-review');
+  const again=await executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,ops,consent,env:{GITHUB_TOKEN:'local-secret'}});
+  assert.equal(again.automaticRetry,false);
+  assert.equal(calls,1);assert.equal(reads,1);
+  assert.equal(again.reconciliation.status,'exists-review');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
+test('sem confirmação correta nenhuma operação executa',async()=>{
+ const s=await setup();
+ try{
+  await assert.rejects(executeNext({stateFile:s.stateFile,recoveryFile:s.recoveryFile,consent:{...consent,teamId:'time-mantenedor'},ops:{precheck(){throw Error('network used')}}}),e=>e.code==='CONSENT');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
+test('sequência pausa em etapa que precisa de intervenção',async()=>{
+ const s=await setup();let count=0;
+ try{
+  const ops={async precheck(){},async run(phase){count++;if(phase==='supabase')throw Error('possible project creation');return {repository:'cliente/kairos-cliente'};},async reconcile(){return {status:'unknown'}}};
+  const out=await executeSequence({stateFile:s.stateFile,recoveryFile:s.recoveryFile,ops,consent});
+  assert.equal(count,2);assert.equal(out.completedAll,false);assert.equal(out.report.at(-1).status,'needs-review');
+ }finally{await rm(s.dir,{recursive:true,force:true});}
+});
