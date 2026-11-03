@@ -38,3 +38,7 @@ Referências:
 O provisionador local em `provisioner/` e `scripts/provision.mjs` permite simular plano, confirmar identidade e gerar repositório a partir do template oficial usando token do **próprio cliente** definido localmente. A verificação rejeita qualquer destino sob a conta do mantenedor. Não há backend nem sessão OAuth; o token não sai da máquina do cliente exceto para a API do GitHub, ao executar os comandos explicitamente.
 
 **Pendente:** ativar o marcador *Template repository* no KAIROS-CORE; criar identidade OAuth hospedada para futuras operações; Supabase/Vercel só com autorização e consentimento de custos. O CLI não está conectado à interface gráfica do assistente.
+
+## Incremento v0.3 — pré-verificação Supabase e Vercel (sem escrita)
+
+`npm run providers:check` lê somente o perfil Vercel, os times acessíveis e a lista de organizações Supabase da conta autorizada. Os destinos são **escolhidos explicitamente** nas variáveis locais. O diagnóstico não comprova titularidade de cobrança, não cria contas, não executa SQL e não publica apps. As respostas não incluem tokens. Para criar recursos nessas contas ainda será necessário um fluxo de consentimento e operações POST implementadas e homologadas separadamente.

@@ -55,6 +55,18 @@ O comando confirma a identidade da conta e que o Core é um template válido. Se
 
 Leia [docs/PROVISIONER.md](docs/PROVISIONER.md) para segurança e limites do projeto.
 
+## Diagnóstico de provedores (v0.3 — somente leitura)
+
+Há agora um **pré-diagnóstico local** das contas de Supabase e Vercel: verifica se as credenciais do administrador conseguem enxergar a organização Supabase e o time Vercel escolhidos. **Não cria projetos, não recupera chaves de aplicações, não comprova titularidade de faturamento e não consome os limites de infraestrutura do mantenedor.**
+
+No terminal do **próprio administrador da célula**, defina `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`, `KAIROS_SUPABASE_ORG_ID` e `KAIROS_VERCEL_TEAM_ID` como variáveis de ambiente locais, sem commit nem envio pelo site. Depois execute:
+
+```bash
+npm run providers:check
+```
+
+O diagnóstico só envia requisições de leitura aos provedores oficiais, sem registrar tokens ou conteúdos sigilosos. Leia [o guia de validação](docs/PROVIDER-PREFLIGHT.md).
+
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 
 Este Installer é **100% estático**. O dono do projeto pode hospedá-lo no **GitHub Pages**, sem banco, storage, tokens ou funções de servidor. Siga [o guia GitHub Pages](docs/PUBLISH.md). Cada aplicativo gerado continua usando as contas próprias da célula.
@@ -97,9 +109,10 @@ O KAIRÓS distribuído às células está em **[KAIROS-CORE](https://github.com/
 ## Roadmap de automação
 
 1. **v0.1** — assistente web sem segredos (entregue).
-2. **v0.2** — UX de diagnóstico e hospedagem pública, sem criar recursos na conta do mantenedor.
-3. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
-4. **v1+** — migrações idempotentes, testes de deploy, tratamento de erros e retomada segura.
+2. **v0.2** — provisionamento GitHub com confirmação local (entregue, execução real ainda não homologada).
+3. **v0.3** — verificação local read-only de organizações Supabase e times Vercel (entregue; sem deploy).
+4. **v1** — OAuth consentido com provedores, validação de custos e provisionamento nas contas do cliente.
+5. **v1+** — migrações idempotentes, testes de deploy, tratamento de erros e retomada segura.
 
 A automação integral ainda depende das APIs, escopos OAuth, termos dos serviços e regras de faturamento. Não serão utilizadas credenciais do mantenedor para criar infraestrutura de terceiros.
 
