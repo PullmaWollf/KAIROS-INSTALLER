@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {controlStore} from '../control/store.js';
 import {ControlError,encryptControl,decryptControl,randomToken} from '../control/crypto.js';
 import {validateCloudPlan,safeInstallation,phaseFor} from '../control/plan.js';
@@ -51,6 +52,10 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     res.setHeader('Set-Cookie',makeCookie(oauthName,'',{age:0,path:'/api/auth'}));
     if(url.searchParams.has('error')||!safeEqual(url.searchParams.get('state'),transaction.state))
      throw new ControlError('OAUTH_STATE','Autorização recusada ou state inválido');
+    // Atomic, durable claim BEFORE exchanging the authorization code.
+    // A repeated or concurrent callback must never reach the token endpoint.
+    const cookieHash=createHash('sha256').update(sealed).digest('hex');
+    if(!await db.claimOAuth(cookieHash))throw new ControlError('OAUTH_REPLAY','Autorização já utilizada');
     const config=providerConfig(transaction.provider,env);
     const token=await exchangeCode({transaction,code:url.searchParams.get('code'),config,fetcher});
     if(transaction.provider==='github'){
