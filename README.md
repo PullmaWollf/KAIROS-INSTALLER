@@ -117,7 +117,7 @@ npm run operate:help
 
 Consulte **[Guia técnico da v0.8](docs/AUTOMATION-V08.md)**. O modo padrão não acessa a rede nem cria recursos.
 
-**Limites importantes:** as sessões OAuth locais ainda **não estão ligadas** à CLI de provisionamento; a operação por CLI continua usando tokens locais no ambiente. É necessário registrar aplicativos OAuth nos provedores, e a conexão Vercel exigirá integração própria. O fluxo integrado ainda exige a cópia Core clonada para aplicar migrações e aguarda deploy atualizado; não existe instalação de um clique nem homologação real.
+**Limites importantes:** as sessões OAuth podem acionar **uma fase por vez no servidor local**, com o modo explícito `KAIROS_ENABLE_LOCAL_OPERATIONS=1`; a CLI independente ainda usa tokens no ambiente. É necessário registrar aplicativos OAuth nos provedores, e a conexão Vercel exigirá integração própria. O fluxo integrado ainda exige a cópia Core clonada para aplicar migrações e aguarda deploy atualizado; não existe instalação de um clique nem homologação real.
 
 ## Publicar sem usar Supabase ou Vercel do mantenedor
 

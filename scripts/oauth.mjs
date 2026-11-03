@@ -19,9 +19,12 @@ const enabled=process.env.KAIROS_ENABLE_LOCAL_OPERATIONS==='1';
 if(enabled&&(!process.env.KAIROS_STATE_FILE||!process.env.KAIROS_RECOVERY_FILE))
  throw new Error('Configure KAIROS_STATE_FILE e KAIROS_RECOVERY_FILE antes de habilitar operações locais');
 const operator=enabled?async({consent,tokens})=>{
- const environment={...process.env,
-  ...(tokens.github?{GITHUB_TOKEN:tokens.github}:{}),
-  ...(tokens.supabase?{SUPABASE_ACCESS_TOKEN:tokens.supabase}:{})};
+ const environment={...process.env};
+ // In browser mode NEVER fall back to unrelated tokens previously present in the terminal.
+ delete environment.GITHUB_TOKEN;
+ delete environment.SUPABASE_ACCESS_TOKEN;
+ if(tokens.github)environment.GITHUB_TOKEN=tokens.github;
+ if(tokens.supabase)environment.SUPABASE_ACCESS_TOKEN=tokens.supabase;
  return await executeNext({stateFile:process.env.KAIROS_STATE_FILE,recoveryFile:process.env.KAIROS_RECOVERY_FILE,
   env:environment,consent,ops:createOperations({runner})});
 }:null;

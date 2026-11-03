@@ -16,7 +16,9 @@ Variáveis **locais** (nunca comitadas nem enviadas no chat):
 
 O navegador apresenta os links de autorização. Implementamos `state` aleatório, PKCE `S256`, validade de 10 minutos, sessão HttpOnly/Lax e uso único do código de autorização. Token/refresh token permanecem **somente em RAM**, sem endpoint para exportá-los. Fechar o processo descarta a sessão. Revogar acesso deve ser feito diretamente no provedor.
 
-**Limitações:** não há conexão dessas sessões com `scripts/operate.mjs` nesta versão. É um protótipo **local** de OAuth, não deploy web público. A Vercel requer uma integração registrada no console, com URL de instalação e fluxo de troca específico; não podemos inventar `client_id` ou autorizar a conta de terceiros sem consentimento. OAuth no navegador **não pode ser publicado no GitHub Pages**, pois exige backend para a troca de códigos.
+**Integração local:** existe agora a opção `KAIROS_ENABLE_LOCAL_OPERATIONS=1`. Com `KAIROS_STATE_FILE` e `KAIROS_RECOVERY_FILE` configurados para arquivos locais, o servidor exibe um formulário que solicita confirmações de destino e custos **a cada fase**. Um POST protegido por cookie HttpOnly + CSRF chama `executeNext` no mesmo processo, usando os tokens GitHub/Supabase da sessão OAuth na memória. O navegador nunca recebe os tokens. Não há fallback para tokens GitHub/Supabase preexistentes no ambiente. São necessários outros segredos locais para as fases de banco e bootstrap, e a Vercel ainda usa `VERCEL_TOKEN` local.
+
+**Limitações:** o serviço ainda é um protótipo **local**, não deploy web público. A Vercel requer uma integração registrada no console, com URL de instalação e fluxo de troca específico; não podemos inventar `client_id` ou autorizar a conta de terceiros sem consentimento. OAuth no navegador **não pode ser publicado no GitHub Pages**, pois exige backend para a troca de códigos.
 
 Referências: [GitHub OAuth](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps), [Supabase OAuth](https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration), [Vercel Integration](https://vercel.com/docs/integrations/create-integration/vercel-api-integrations).
 
@@ -69,3 +71,18 @@ O hook é uma credencial: **qualquer pessoa com a URL pode acionar builds**. Rev
 ## 6. Cópia local automática do Core
 
 Com a GitHub CLI (`gh`) instalada no computador do administrador e `GITHUB_TOKEN` temporário da conta da célula, a fase GitHub cria o repositório a partir do template **e tenta cloná-lo na pasta `coreDir`** definida no plano. O destino local deve **não existir** e a pasta-pai deve existir; o sistema falha antes de criar o repositório se o destino já existe ou a CLI `gh` está ausente. O token é passado por `GH_TOKEN` no ambiente do subprocesso, **nunca na URL ou em argumentos**. Se o clone falhar após a criação remota, o registro fica em `needs-review`, e a rotina não recria o repositório automaticamente. Confira o GitHub e a pasta local antes de continuar.
+
+## 7. Executar uma etapa pelo navegador local (experimental)
+
+Depois de registrar OAuth Apps de teste e configurar as variáveis locais, prepare o workflow conforme seção 2. Configure também os caminhos locais absolutos dos registros:
+
+```powershell
+$env:KAIROS_STATE_FILE = "C:\\Projetos\\KAIROS-INSTALLER\\.kairos-install\\celula.json"
+$env:KAIROS_RECOVERY_FILE = "C:\\Projetos\\KAIROS-INSTALLER\\.kairos-install\\operations.json"
+$env:KAIROS_ENABLE_LOCAL_OPERATIONS = "1"
+npm run oauth:local
+```
+
+Abra `http://127.0.0.1:43117`. Clique em **Conectar GitHub** e **Conectar Supabase**, siga as autorizações oficiais, depois revise e confirme os destinos na página local para executar **somente a próxima etapa**. O servidor não permite executar outro projeto pelo formulário: usa apenas os arquivos definidos ao iniciar o processo. Para prosseguir, é necessário clicar de novo. Nenhum token é apresentado ao navegador.
+
+**Não exponha o serviço por túneis, roteadores, reverse proxies ou URLs públicas**. O fluxo de produção exigirá implantação de um backend real com autenticação de usuários, cofre de credenciais cifradas, consentimento e política LGPD. Até lá, trabalhe apenas em contas de teste separadas.
