@@ -2,10 +2,11 @@ import {createServer} from 'node:http';
 import {randomBytes} from 'node:crypto';
 import {ProvisioningError} from '../provisioner/plan.js';
 import {beginAuthorization,exchangeCode,providerConfig,safeEqual} from './protocol.js';
+import {renderDashboard} from './dashboard.js';
 function cookies(header=''){return Object.fromEntries(header.split(';').map(s=>s.trim().split('=').slice(0,2)).filter(x=>x.length===2));}
 function headers(res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");}
 function respond(res,code,body,type='text/plain; charset=utf-8'){res.writeHead(code,{'Content-Type':type});res.end(body);}
-export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,operator=null}={}){
+export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,operator=null,readiness=null}={}){
  const sessions=new Map();
  const MAX_SESSIONS=8,MAX_TTL=30*60*1000;
  let base;
@@ -30,10 +31,15 @@ export function createOAuthServer({env=process.env,fetcher=fetch,port=43117,oper
     const configured=['github','supabase'].filter(p=>{try{providerConfig(p,env);return true;}catch{return false;}});
     const enabled=configured.map(p=>'<li><a href="/connect/'+p+'">Conectar '+p+'</a></li>').join('');
     const form=operator?'<h2>Executar próxima etapa</h2><p>O destino e os custos precisam ser confirmados a cada operação. A Vercel ainda exige token local.</p><form action="/operate" method="post"><input type="hidden" name="csrf" value="'+session.csrf+'"><p><label>GitHub da célula <input name="owner" required autocomplete="off"></label></p><p><label>Organização Supabase <input name="organizationId" required autocomplete="off"></label></p><p><label>Time Vercel <input name="teamId" required autocomplete="off"></label></p><p><label><input type="checkbox" name="acceptBilling" value="yes" required> Confirmo os destinos e possíveis cobranças na MINHA conta</label></p><button type="submit">Executar próxima etapa autorizada</button></form>':'<p>Operações pelo navegador desabilitadas até configurar KAIROS_ENABLE_LOCAL_OPERATIONS=1.</p>';
-    const html='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAIRÓS — OAuth local</title><body><h1>KAIRÓS — Conexões locais</h1><p>Autorizações somente nesta máquina. Tokens em memória, nunca no navegador ou disco.</p><ul>'+enabled+'</ul><p>Provedores conectados: consulte <a href="/status">status</a>.</p><p>Vercel exige integração registrada; ainda não disponível neste fluxo.</p>'+form+'</body></html>';
+    const html='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAIRÓS — OAuth local</title><body><h1>KAIRÓS — Conexões locais</h1><p>Autorizações somente nesta máquina. Tokens em memória, nunca no navegador ou disco.</p><ul>'+enabled+'</ul><p>Provedores conectados: consulte <a href="/status">status</a>.</p><p>Vercel exige integração registrada; ainda não disponível neste fluxo.</p>'+(readiness?'<p><a href="/installation">Consultar progresso e prontidão</a></p>':'')+form+'</body></html>';
     return respond(res,200,html,'text/html; charset=utf-8');
    }
    if(!session)return respond(res,401,'Abra primeiro a página inicial do instalador local');
+   if(u.pathname==='/installation'&&req.method==='GET'){
+    if(!readiness)return respond(res,404,'Painel não configurado');
+    const report=await readiness();
+    return respond(res,200,renderDashboard(report),'text/html; charset=utf-8');
+   }
    if(u.pathname==='/status'&&req.method==='GET'){
     return respond(res,200,JSON.stringify({connected:[...session.tokens.keys()],pending:[...session.pending.keys()]}),'application/json; charset=utf-8');
    }
