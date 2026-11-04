@@ -23,9 +23,14 @@ as travas exatas da homologação e não depende de sessão/cookie do cliente.
 
 O workflow `.github/workflows/automation.yml` verifica a fila a cada 5 minutos
 e processa até oito fases durante uma execução. O endpoint
-`GET /api/automation/tick` exige Bearer `CRON_SECRET`; não recebe qualquer
-token de cliente do GitHub Actions. As credenciais ficam no banco criptografado
-do Installer. O agendamento é independente da aba do usuário.
+`GET /api/automation/tick` exige um token **OIDC assinado pelo GitHub**,
+válido por poucos minutos, vinculado ao identificador imutável deste
+repositório, à branch `main`, ao workflow exato e ao endereço do endpoint.
+O servidor verifica a assinatura RSA com a chave pública oficial do GitHub
+em uma URL fixada no código. O token não é salvo, registrado nem mostrado ao
+cliente. O GitHub Actions não recebe credenciais dos clientes; elas continuam
+criptografadas no banco de controle. Nenhum segredo compartilhado precisa
+ser criado ou copiado entre GitHub e Vercel.
 
 Um claim atômico no Supabase evita que workers concorrentes iniciem a mesma
 fase. Se uma criação remota responder de forma ambígua, o estado fica
@@ -37,10 +42,9 @@ fase. Se uma criação remota responder de forma ambígua, o estado fica
 1. Aplicar manualmente **somente** a migração aditiva revisada
    `control/migrations/20261104000000_automation_queue.sql` no projeto
    Supabase **kairos-installer-control**. Não executar no banco do AGAPE.
-2. Gerar segredo independente e forte para a integração de agendamento.
-   Configurar **o mesmo segredo** como `CRON_SECRET` no Vercel Installer e
-   `KAIROS_AUTOMATION_CRON_SECRET` nos GitHub Actions Secrets do repositório.
-   Nunca enviar o segredo em conversas ou logs.
+2. Confirmar que o workflow agendado possui permissão **id-token: write**.
+   O token OIDC é solicitado automaticamente a cada execução, sem nenhum
+   segredo permanente configurado nos dois serviços.
 3. Registrar plano de homologação isolado no Installer, obtendo o UUID.
    Configurar os IDs exatos e o vencimento curto do
    `docs/homologacao-isolada.md`.
