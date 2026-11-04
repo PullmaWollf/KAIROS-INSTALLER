@@ -5,7 +5,9 @@ export function suggestRepositoryName(cellName){
  if(typeof cellName!=='string')return '';
  let slug=cellName.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
- if(slug.startsWith('hml-'))slug=slug.slice(4);
+ const isHomologation=slug.startsWith('hml-');
+ if(isHomologation)slug=slug.slice(4);
  if(!slug)return '';
- return 'kairos-'+slug.slice(0,49).replace(/-+$/g,'');
+ return (isHomologation?'kairos-hml-':'kairos-')+
+  slug.slice(0,45).replace(/-+$/g,'');
 }
