@@ -84,3 +84,13 @@ export async function connectVercelIntegration({db,userId,code,callbackUrl,
   encryptControl(record,purpose(userId),{env}));
  return {connected:true,teamId:selectedId,teamSlug:record.teamSlug};
 }
+
+// Vercel sends an optional "next" URL to complete the integration popup.
+// Only follow Vercel-owned HTTPS origins; never redirect to arbitrary URLs.
+export function safeVercelNext(value){
+ if(typeof value!=='string'||value.length>2048)return null;
+ let url;try{url=new URL(value);}catch{return null;}
+ if(url.protocol!=='https:'||url.username||url.password||
+  !['vercel.com','www.vercel.com'].includes(url.hostname))return null;
+ return url.toString();
+}
