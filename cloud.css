@@ -27,3 +27,15 @@
  .vercel-token-steps{grid-template-columns:1fr}
  .vercel-guide>.link-button{justify-self:stretch}
 }
+
+/* Read-only readiness diagnostics. Green means read access only, not create rights. */
+.preflight-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.preflight-card{padding:13px;border:1px solid #e2e7f0;border-radius:11px;background:#fafbff}
+.preflight-card.verified{border-color:#9dcbb2;background:#f6fcf8}
+.preflight-card.unverified{border-color:#ead5b1;background:#fffaf2}
+.preflight-card strong{font-size:.91rem}
+.preflight-card p{margin:7px 0 0;line-height:1.45}
+.preflight-caution{font-size:.8rem;color:#765c26}
+.preflight-warning{background:#fff6e9;border:1px solid #e9c899;color:#704a20;padding:12px;border-radius:10px;font-size:.85rem}
+.preflight-info{background:#f2f6ff;border:1px solid #cfdef4;color:#294974;padding:12px;border-radius:10px;font-size:.85rem}
+@media(max-width:750px){.preflight-cards{grid-template-columns:1fr}.section-header{flex-wrap:wrap}}
