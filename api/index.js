@@ -39,6 +39,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    // Private scheduler: a CRON_SECRET is mandatory; no browser session is accepted.
    if(req.method==='GET'&&url.pathname==='/api/automation/tick'){
     await verifyAutomationIdentity(req.headers.authorization,{fetcher});
+    if(!automationReady(env))return json(res,200,{status:'disabled'});
     return json(res,200,await tickAutomation({db,env,fetcher}));
    }
    const rawSession=cookieValue(req,sessionName);
