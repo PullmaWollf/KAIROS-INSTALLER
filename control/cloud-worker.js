@@ -206,7 +206,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    const domain=await ensureCellDomain({fetcher,token,teamId:row.vercel_team_id,
     projectId:row.vercel_project_id,cellName:row.cell_name});
    await smokeTest({url:domain.url,fetcher,approved:true});
-   return {receipt:{url:domain.url}};
+   return {receipt:{}};
   }
   throw new ControlError('BAD_PHASE');
  }
@@ -224,7 +224,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
     teamId:row.vercel_team_id,projectId:row.vercel_project_id,cellName:row.cell_name});
    if(!domain)return {status:'waiting'};
    await smokeTest({url:domain.url,fetcher,approved:true});
-   return {status:'verified',receipt:{url:domain.url}};
+   return {status:'verified',receipt:{}};
   }
   if(phase==='github'){
    return reconcileGithub({fetcher,token:await token(ownerId,'github'),owner:row.owner,repository:row.repository});

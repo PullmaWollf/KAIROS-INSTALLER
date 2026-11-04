@@ -101,7 +101,14 @@ async function showDetail(id){
    }
    else actions.append(button('Verificar e reconciliar (somente leitura)',()=>reconcile(i)));
    box.append(actions);
-  }else box.append(el('p','Todas as oito etapas estão registradas. Ainda é necessária homologação real.','notice'));
+  }else{
+   box.append(el('p','Todas as oito etapas foram registradas. Ainda é necessária a homologação do login e do isolamento.','notice'));
+   if(i.proposedDomain&&operations.some(o=>o.phase==='smoke'&&o.status==='confirmed')){
+    const link=el('a','Abrir célula: https://'+i.proposedDomain,'link-button secondary');
+    link.href='https://'+i.proposedDomain;link.target='_blank';link.rel='noopener noreferrer';
+    box.append(link);
+   }
+  }
   if(i.phaseIndex>=6){
    const area=el('div',undefined,'toolbar');
    area.append(button('Exibir credencial inicial do ADM (uma única vez)',()=>showInitialCredential(i.id)));
