@@ -2,6 +2,7 @@ import {ControlError} from './crypto.js';
 import {phaseFor,safeInstallation} from './plan.js';
 import {cloudOps} from './cloud-worker.js';
 import {assertHomologationScope} from './homologation-guard.js';
+import {assertExecutionScope} from './production-guard.js';
 const safeCode=e=>{
  const code=String(e?.code||'REMOTE_UNCERTAIN');
  return /^[A-Z0-9_]{2,40}$/.test(code)?code:'REMOTE_UNCERTAIN';
@@ -17,7 +18,7 @@ export async function executeCloudStep({db,userId,row,consent,env=process.env,fe
  const phase=phaseFor(Number(row.phase_index));
  if(!phase)return {status:'complete',homologated:false};
  checkedConsent(row,phase,consent);
- assertHomologationScope({env,userId,row});
+ await assertExecutionScope({env,db,userId,row,homologationGuard:assertHomologationScope});
  const ops=worker||cloudOps({db,env,fetcher});
  // All prereqs and account access are checked before reserving a remote operation.
  await ops.precheck(row,userId,phase);
@@ -55,6 +56,7 @@ export async function reconcileCloudStep({db,userId,row,env=process.env,fetcher=
  if(!['started','needs_review'].includes(attempt.status))throw new ControlError('BAD_STATE');
  if(!['deploy','smoke'].includes(phase))
   return {status:'needs_review',phase,automaticRetry:false,reason:'MANUAL_REVIEW_REQUIRED'};
+ await assertExecutionScope({env,db,userId,row,homologationGuard:assertHomologationScope});
  const ops=worker||cloudOps({db,env,fetcher});
  let finding;
  try{finding=await ops.reconcile(row,userId,phase,attempt.started_at);}

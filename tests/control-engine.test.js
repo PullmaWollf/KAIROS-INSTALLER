@@ -54,6 +54,6 @@ test('GET-based deploy reconciliation can advance without remote POST',async()=>
   async finish(){finished++;return true;}};
  const worker={async reconcile(){return {status:'verified',receipt:{url:'https://cell.vercel.app'}};},
   async run(){post++}};
- const result=await reconcileCloudStep({db,userId:1,row:deploy,worker});
+ const result=await reconcileCloudStep({db,userId:1,row:deploy,worker,env});
  assert.equal(result.status,'recovered');assert.equal(finished,1);assert.equal(post,0);
 });
