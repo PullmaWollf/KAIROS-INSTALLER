@@ -22,8 +22,35 @@ async function initialize(){
    const card=el('div',undefined,'provider'),connected=session.providers?.includes(provider);
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
-   const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
-   link.href='/api/auth/start?provider='+provider;card.append(link);
+   if(provider==='vercel'){
+    if(session.vercelTeam)card.append(el('small','Equipe: '+session.vercelTeam.teamSlug+' ('+session.vercelTeam.teamId+')','state-label'));
+    const form=document.createElement('form');form.autocomplete='off';
+    const teamLabel=el('label','ID da equipe Vercel');
+    const team=document.createElement('input');team.name='teamId';team.required=true;
+    team.placeholder='team_...';team.value=session.vercelTeam?.teamId||'';
+    team.autocomplete='off';team.maxLength=70;teamLabel.append(team);
+    const secretLabel=el('label','Token de acesso da sua conta Vercel');
+    const secret=document.createElement('input');secret.type='password';
+    secret.name='accessToken';secret.required=true;secret.minLength=20;secret.maxLength=512;
+    secret.autocomplete='new-password';secret.placeholder='Cole seu token de acesso';
+    secretLabel.append(secret);
+    const submit=el('button',connected?'Substituir credencial':'Verificar e conectar','primary');
+    submit.type='submit';form.append(teamLabel,secretLabel,submit);
+    form.addEventListener('submit',async e=>{
+     e.preventDefault();submit.disabled=true;
+     try{
+      await api('/api/connections/vercel',{method:'POST',
+       body:JSON.stringify({teamId:team.value.trim(),accessToken:secret.value.trim()})});
+      notify('Acesso à equipe Vercel validado. Credencial protegida no servidor.');
+      secret.value='';await initialize();
+     }catch(error){notify(error.message);secret.value='';}
+     finally{submit.disabled=false;}
+    });
+    card.append(form);
+   }else{
+    const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
+    link.href='/api/auth/start?provider='+provider;card.append(link);
+   }
    if(connected)card.append(button('Desconectar',async()=>{
     if(!window.confirm('Desconectar '+provider+' neste instalador? Revogue também o acesso na conta do provedor se desejar.'))return;
     try{await api('/api/connections/disconnect',{method:'POST',body:JSON.stringify({provider})});await initialize();}
