@@ -17,8 +17,18 @@
 <h1>Seu KAIRÓS, do início à publicação.</h1><p>Conecte os provedores e acompanhe cada etapa sem compartilhar senhas com o navegador. A versão integrada ainda precisa ser homologada antes de aceitar dados reais.</p></div>
 <div id="alert" role="status" aria-live="polite"></div>
 <section class="surface" id="connections"><h2>1. Conectar contas</h2><div id="providers" class="provider-grid"></div><p class="muted">Conectar uma conta não autoriza criar recursos automaticamente. A Vercel exige permissões específicas de gerenciamento.</p></section>
-<section class="surface" id="preinstall-audit"><div class="section-header"><h2>2. Verificar conexões antes de instalar</h2><div class="toolbar"><button class="primary" type="button" id="preinstall-check">Verificar conexões</button><button class="secondary" type="button" id="zero-cost-check">Verificar custo zero</button></div></div><p class="muted">Verificaremos os acessos ao GitHub, Supabase e Vercel e ao modelo KAIRÓS Core usando apenas consultas de leitura. Esta validação não cria nada e não garante permissão de criação.</p><div id="preinstall-results" role="status" aria-live="polite"></div><div id="zero-cost-results" role="status" aria-live="polite"></div></section>
-<section class="surface" id="new-install"><h2>3. Preparar a célula</h2><p class="muted">Informe o nome da célula. O nome do repositório é sugerido automaticamente; você pode ajustá-lo se já existir. Senhas e chaves privadas ficam no servidor.</p>
+<section class="surface" id="vercel-github-link">
+ <div class="section-header"><h2>2. Conectar GitHub à Vercel</h2></div>
+ <p class="muted">Para publicar sua célula automaticamente, a Vercel precisa estar autorizada a importar os repositórios GitHub da sua conta. Esta autorização é feita diretamente na Vercel, sem compartilhar senha com o KAIRÓS.</p>
+ <div class="toolbar">
+  <a class="link-button primary" href="https://vercel.com/new" target="_blank" rel="noopener noreferrer">Conectar GitHub na Vercel</a>
+  <button class="secondary" type="button" id="vercel-github-check">Verificar conexão GitHub ↔ Vercel</button>
+ </div>
+ <p class="muted">Quando voltar da Vercel, clique em “Verificar conexão”. Você não precisa criar nem importar um projeto manualmente.</p>
+ <div id="vercel-github-results" role="status" aria-live="polite"></div>
+</section>
+<section class="surface" id="preinstall-audit"><div class="section-header"><h2>3. Verificar conexões antes de instalar</h2><div class="toolbar"><button class="primary" type="button" id="preinstall-check">Verificar conexões</button><button class="secondary" type="button" id="zero-cost-check">Verificar custo zero</button></div></div><p class="muted">Verificaremos os acessos ao GitHub, Supabase e Vercel e ao modelo KAIRÓS Core usando apenas consultas de leitura. Esta validação não cria nada e não garante permissão de criação.</p><div id="preinstall-results" role="status" aria-live="polite"></div><div id="zero-cost-results" role="status" aria-live="polite"></div></section>
+<section class="surface" id="new-install"><h2>4. Preparar a célula</h2><p class="muted">Informe o nome da célula. O nome do repositório é sugerido automaticamente; você pode ajustá-lo se já existir. Senhas e chaves privadas ficam no servidor.</p>
 <form id="create-form" autocomplete="off">
 <div class="fields">
 <label>Conta GitHub <input id="owner" name="owner" required readonly></label>
@@ -30,7 +40,7 @@
 <label>Login do primeiro ADM <input name="adminLogin" required placeholder="administrador" minlength="3" maxlength="40"></label>
 </div>
 <button class="primary" type="submit">Registrar e iniciar instalação assistida</button></form></section>
-<section class="surface" id="installations"><div class="section-header"><h2>4. Progresso da instalação</h2><button type="button" class="secondary" id="reload">Atualizar</button></div>
+<section class="surface" id="installations"><div class="section-header"><h2>5. Progresso da instalação</h2><button type="button" class="secondary" id="reload">Atualizar</button></div>
 <div id="install-list"></div>
 <div id="detail"></div></section>
 <footer>KAIRÓS Installer · Ambiente de pré-homologação · <a href="./index.html">Instalação guiada</a> · <a href="https://github.com/PullmaWollf/KAIROS-INSTALLER" target="_blank" rel="noopener noreferrer">Código-fonte</a></footer>
