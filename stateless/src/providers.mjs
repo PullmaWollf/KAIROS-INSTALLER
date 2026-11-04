@@ -54,8 +54,14 @@ export async function audit({fetcher=fetch,plan,credentials}){
   const namespaces=await call(fetcher,'vercel',vercelToken,
     '/v1/integrations/git-namespaces?provider=github');
   const items=Array.isArray(namespaces)?namespaces:namespaces?.namespaces;
-  if(!Array.isArray(items)||!items.some(x=>String(x.name||x.slug||x.owner?.login||'').toLowerCase()===plan.githubLogin.toLowerCase()))
-    throw new InstallationError('VERCEL_GITHUB_LINK_MISSING');
+  if(!Array.isArray(items))throw new InstallationError('VERCEL_GITHUB_LINK_UNAVAILABLE');
+  const linked=items.find(x=>x?.provider==='github'&&
+    [x.name,x.slug].some(v=>typeof v==='string'&&
+      v.toLowerCase()===plan.githubLogin.toLowerCase()));
+  if(!linked)throw new InstallationError('VERCEL_GITHUB_LINK_MISSING');
+  if(linked.requireReauth===true||linked.isAccessRestricted!==false||
+    linked.viewer?.canCreateApp===false)
+    throw new InstallationError('VERCEL_GITHUB_PERMISSION_UNVERIFIED');
   return Object.freeze({ok:true,readOnly:true,createsResources:false,
     supabase:{plan:'free',activeProjectsObserved:active,organizationId:org.id},
     vercel:{plan:'hobby',scope:plan.vercelScope},github:{owner:gh.login,template:'PullmaWollf/KAIROS-CORE'},
