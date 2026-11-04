@@ -18,6 +18,17 @@ export function productionReady(env=process.env){
   env.KAIROS_ENABLE_BETA_SQL==='1'&&
   env.KAIROS_ENABLE_GIT_DEPLOY==='1';
 }
+/** Publicly safe mode flags; never expose customer identifiers or provider tokens. */
+export function productionStatus(env=process.env){
+ return Object.freeze({
+  selected:env.KAIROS_PRODUCTION_MODE==='1',
+  enabled:productionReady(env),
+  exclusive:!(env.KAIROS_PRODUCTION_MODE==='1'&&env.KAIROS_HOMOLOGATION_MODE==='1'),
+  provisioningEnabled:env.KAIROS_CONTROL_ENABLE_WRITES==='1',
+  automaticProvisioningEnabled:env.KAIROS_AUTOMATION_ENABLED==='1',
+  manualExecutionAllowed:false
+ });
+}
 export function validateProductionScope({env=process.env,userId,row,login}){
  if(!productionReady(env))throw new ControlError('PRODUCTION_LOCKED',
   'Modo de produção e proteções de escrita ainda não habilitados');
