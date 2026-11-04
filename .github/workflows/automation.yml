@@ -37,7 +37,7 @@ jobs:
                 echo "Etapa confirmada; verificando proxima tarefa."
                 sleep 5
                 ;;
-              idle|completed|waiting|paused)
+              idle|disabled|completed|waiting|paused)
                 echo "Executor terminou ciclo: ${state}."
                 exit 0
                 ;;
