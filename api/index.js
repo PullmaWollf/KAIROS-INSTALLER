@@ -8,7 +8,8 @@ import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/en
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
 import {preinstallationAudit} from '../control/preinstall-audit.js';
 import {vercelQuery} from '../provisioner/vercel-scope.js';
-import {automationReady,assertAutomationCaller,authorizeAutomation,tickAutomation} from '../control/automation.js';
+import {automationReady,authorizeAutomation,tickAutomation} from '../control/automation.js';
+import {verifyAutomationIdentity} from '../control/automation-oidc.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
 function errCode(e){return e instanceof ControlError?e.code:'INTERNAL_ERROR';}
@@ -37,7 +38,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    }
    // Private scheduler: a CRON_SECRET is mandatory; no browser session is accepted.
    if(req.method==='GET'&&url.pathname==='/api/automation/tick'){
-    assertAutomationCaller(req.headers.authorization,env);
+    await verifyAutomationIdentity(req.headers.authorization,{fetcher});
     return json(res,200,await tickAutomation({db,env,fetcher}));
    }
    const rawSession=cookieValue(req,sessionName);
