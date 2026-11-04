@@ -2,7 +2,7 @@ import {ProvisioningError} from './plan.js';
 
 // A personal account is identified internally but never presented as a "team".
 // Never send a synthetic personal ID to Vercel as ?teamId.
-const team=/^team_[A-Za-z0-9_-]{6,54}$/;
+const team=/^team_[A-Za-z0-9_-]{4,54}$/;
 const personal=/^personal_([A-Za-z0-9_-]{6,54})$/;
 export function vercelScope(accountId){
  if(typeof accountId!=='string')throw new ProvisioningError('BAD_TARGET','Hospedagem Vercel inválida');
