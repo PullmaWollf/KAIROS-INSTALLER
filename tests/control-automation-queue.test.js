@@ -136,3 +136,29 @@ test('project warm-up waits without any duplicate Supabase or Vercel POST',async
  assert.equal(claims,0);
  assert.equal(runs,0);
 });
+
+test('an invalid Vercel credential blocks GitHub creation before any provider write',async()=>{
+ const seen=[];let providerWrites=0;let phaseClaims=0;
+ const job={installationId:row.id,claimId:uuid,userId:42,owner:row.owner,
+  repository:row.repository,supabaseOrgId:row.supabase_org_id,
+  vercelTeamId:row.vercel_team_id,expiresAt:env.KAIROS_HML_EXPIRES_AT,acceptBilling:true};
+ const db={
+  async claimAutomation(){return job;},
+  async installation(){return {...row};},
+  async operations(){return [];},
+  async claim(){phaseClaims++},
+  async settleAutomation(job){assert.equal(job.state,'paused');return true;}
+ };
+ const worker={
+  async precheck(_row,_who,phase){
+   seen.push(phase);
+   if(phase==='vercel')throw new ControlError('VERCEL_TOKEN_REQUIRED');
+  },
+  async run(){providerWrites++;}
+ };
+ const result=await tickAutomation({db,env,worker});
+ assert.equal(result.status,'paused');
+ assert.deepEqual(seen,['github','supabase','vercel']);
+ assert.equal(phaseClaims,0);
+ assert.equal(providerWrites,0);
+});
