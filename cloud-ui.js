@@ -142,6 +142,55 @@ async function initialize(){
   notify(error.message);$('auth-status').textContent='Backend ainda não disponível';
  }
 }
+
+function renderPreinstallationAudit(report){
+ const area=$('preinstall-results');area.replaceChildren();
+ const names={github:'GitHub — repositório do modelo',supabase:'Supabase — banco de dados',vercel:'Vercel — hospedagem'};
+ const messages={
+  NOT_CONNECTED:'Não conectado ou sessão expirada',
+  READ_VERIFICATION_FAILED:'Não foi possível verificar o acesso. Reconecte e tente novamente.',
+  WRONG_OWNER:'Conta GitHub diferente da conta autorizada',
+  TEMPLATE_NOT_READY:'Modelo KAIRÓS Core não está disponível',
+  NO_ELIGIBLE_ORGANIZATION:'Nenhuma organização autorizada encontrada',
+  IDENTITY_AND_PUBLIC_TEMPLATE_VERIFIED:'Conta e repositório-modelo confirmados',
+  ORGANIZATION_ACCESS_VERIFIED:'Organização Supabase encontrada',
+  HOSTING_ACCESS_VERIFIED:'Hospedagem Vercel acessível'
+ };
+ const grid=el('div',undefined,'preflight-cards');
+ for(const item of report.providers||[]){
+  const tile=el('div',undefined,'preflight-card '+(item.readAccess?'verified':'unverified'));
+  tile.append(el('strong',names[item.provider]||item.provider),
+   el('p',messages[item.reason]||'Conexão não comprovada','state-label'));
+  tile.append(el('p',item.writePermission==='repo-scope-missing'?
+   'Permissão repo ausente. Reconecte o GitHub.':
+   'Criação automática ainda não foi testada.','preflight-caution'));
+  grid.append(tile);
+ }
+ area.append(grid);
+ const orgs=report.supabaseOrganizations||[];
+ const list=$('supabase-org-list');list.replaceChildren();
+ for(const o of orgs){const option=el('option');option.value=o.id;option.label=o.name;list.append(option);}
+ if(orgs.length===1&&!$('supabase-org').value)$('supabase-org').value=orgs[0].id;
+ const f=report.serverFlags||{};
+ const missing=Object.entries({'Criação de recursos':f.provisioning,
+  'Gerenciamento da Vercel':f.vercelManagement,'Migração do banco':f.supabaseMigrations,
+  'Publicação automática':f.deployment}).filter(x=>!x[1]).map(x=>x[0]);
+ if(missing.length)area.append(el('p','Ainda bloqueado no servidor: '+missing.join(', ')+
+  '. Essas operações só serão habilitadas na homologação autorizada.','preflight-warning'));
+ area.append(el('p',report.accessValidated?
+  'Acesso de LEITURA confirmado nas três contas. Criar recursos de verdade ainda precisa ser testado.':
+  'Pelo menos uma conexão precisa ser corrigida antes de preparar a instalação.',
+  report.accessValidated?'preflight-info':'preflight-warning'));
+ area.append(el('p','Modelo: KAIRÓS Core. Operações de escrita executadas: 0. Nenhum recurso criado.','muted'));
+}
+async function runPreinstallationAudit(){
+ const btn=$('preinstall-check');btn.disabled=true;btn.textContent='Verificando…';
+ try{renderPreinstallationAudit(await api('/api/preinstallation-audit'));}
+ catch(error){$('preinstall-results').replaceChildren(el('p',
+  'Verificação indisponível: '+error.message,'preflight-warning'));}
+ finally{btn.disabled=false;btn.textContent='Verificar novamente';}
+}
+$('preinstall-check').addEventListener('click',runPreinstallationAudit);
 async function loadInstallations(){
  try{
   const {installations}=await api('/api/installations');
