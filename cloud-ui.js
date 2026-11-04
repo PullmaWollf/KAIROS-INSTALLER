@@ -1,5 +1,4 @@
 // Background automation is handled by the server; this page only submits consent.
-import {VERCEL_TOKEN_URL,VERCEL_TOKEN_NAME,VERCEL_TOKEN_STEPS,VERCEL_TOKEN_SAFETY} from './vercel-token-guide.js';
 import {suggestRepositoryName} from './cell-repository-name.js';
 const phases=['GitHub','Supabase','Migrações','Vercel','Variáveis','Primeiro ADM','Deploy','Verificação'];
 const $=id=>document.getElementById(id);
@@ -32,101 +31,12 @@ async function initialize(){
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
    if(provider==='vercel'){
-    if(session.vercelTeam)card.append(el('small','Hospedagem conectada: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId),'state-label'));
-    const guide=el('section',undefined,'vercel-guide');
-    guide.setAttribute('aria-label','Como criar sua chave de acesso Vercel');
-    guide.append(
-     el('h3','Como conectar a sua Vercel'),
-     el('p','Abra a Vercel e preencha estes 3 campos para criar sua chave. Não precisa entender contas pessoais nem equipes.','state-label'));
-    const tokenLink=el('a','1. Abrir a Vercel e criar a chave','link-button primary');
-    tokenLink.href=VERCEL_TOKEN_URL;
-    tokenLink.target='_blank';tokenLink.rel='noopener noreferrer';
-    guide.append(tokenLink);
-    const steps=el('ol',undefined,'vercel-token-steps');
-    for(const step of VERCEL_TOKEN_STEPS){
-     const item=el('li',undefined,'vercel-token-step');
-     const title=el('span',step.field,'vercel-step-label');
-     const value=el('strong',step.value,'vercel-step-value');
-     const note=el('p',step.explanation,'state-label');
-     item.append(title,value,note);
-     if(step.field==='TOKEN NAME'){
-      const copy=button('Copiar nome',async()=>{
-       try{await navigator.clipboard.writeText(VERCEL_TOKEN_NAME);
-        copy.textContent='Copiado!';
-       }catch{copy.textContent='Selecione o nome acima para copiar';}
-      },'secondary');
-      copy.classList.add('vercel-copy-name');
-      item.append(copy);
-     }
-     steps.append(item);
-    }
-    guide.append(steps,el('p','Depois clique em Create, copie a chave gerada e cole no campo abaixo.','vercel-next'),
-     el('p',VERCEL_TOKEN_SAFETY,'vercel-safety'));
-    card.append(guide);
-    const form=document.createElement('form');form.className='vercel-connect-form';
-    form.autocomplete='off';
-    const tokenLabel=el('label','Chave de acesso da Vercel');
-    const secret=document.createElement('input');secret.type='password';
-    secret.name='accessToken';secret.required=true;secret.minLength=20;secret.maxLength=512;
-    secret.autocomplete='new-password';secret.placeholder='Cole o token aqui';
-    tokenLabel.append(secret);
-    const submit=el('button','Conectar minha Vercel','primary');
-    submit.type='submit';
-    const status=el('p','','state-label');
-    status.setAttribute('role','status');
-    form.append(tokenLabel,submit,status);
-    let options=null,choice=null;
-    secret.addEventListener('input',()=>{
-     options=null;if(choice){choice.remove();choice=null;}
-     submit.textContent='Conectar minha Vercel';status.textContent='';
-    });
-    form.addEventListener('submit',async event=>{
-     event.preventDefault();submit.disabled=true;
-     const accessToken=secret.value.trim();
-     try{
-      if(!options){
-       status.textContent='Identificando suas equipes na Vercel…';
-       const found=await api('/api/connections/vercel/teams',{method:'POST',
-        body:JSON.stringify({accessToken})});
-       options=found.teams;
-       if(!Array.isArray(options)||!options.length){
-        options=null;status.textContent='Não foi possível identificar sua hospedagem. Confira se criou a chave na conta correta.';
-        secret.value='';return;
-       }
-       if(found.hasMore){options=null;status.textContent='Encontramos muitos espaços de hospedagem. Fale com o suporte para conectar o correto.';secret.value='';return;}
-       if(options.length>1){
-        choice=el('select');choice.setAttribute('aria-label','Escolha onde publicar');
-        for(const item of options){
-         const option=el('option',item.name+(item.slug?' ('+item.slug+')':''));
-         option.value=item.teamId;choice.append(option);
-        }
-        form.insertBefore(choice,submit);
-        submit.textContent='Conectar hospedagem selecionada';
-        status.textContent='3. Escolha onde deseja publicar e confirme a conexão.';
-        return;
-       }
-      }
-      const teamId=choice?choice.value:options[0].teamId;
-      if(!options.some(item=>item.teamId===teamId))throw Error('Hospedagem inválida');
-      status.textContent='Verificando acesso à sua hospedagem…';
-      await api('/api/connections/vercel',{method:'POST',
-       body:JSON.stringify({teamId,accessToken})});
-      secret.value='';notify('Sua Vercel foi conectada com segurança.');
-      await initialize();
-     }catch(error){
-      secret.value='';options=null;
-      if(choice){choice.remove();choice=null;}
-      submit.textContent='Conectar minha Vercel';
-      status.textContent='Não foi possível conectar. Confira o token e o acesso à equipe.';
-      notify(error.message);
-     }finally{submit.disabled=false;}
-    });
-    if(connected){
-     form.hidden=true;
-     guide.hidden=true;
-     card.append(button('Atualizar conexão',()=>{guide.hidden=false;form.hidden=false;secret.focus();},'secondary'));
-    }
-    card.append(form);
+    const helper=el('p','Conecte a sua conta diretamente pela Vercel. Escolha a hospedagem e autorize o KAIRÓS; nenhuma chave precisa ser copiada.','state-label');
+    const link=el('a',connected?'Reconectar pela Vercel':'Conectar minha Vercel','link-button '+(connected?'secondary':'primary'));
+    link.href='/api/auth/start?provider=vercel';
+    card.append(helper,link);
+    if(session.vercelTeam)
+     card.append(el('small','Hospedagem conectada: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId),'state-label'));
    }else{
     const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
     link.href='/api/auth/start?provider='+provider;card.append(link);
