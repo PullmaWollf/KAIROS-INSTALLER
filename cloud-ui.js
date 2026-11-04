@@ -83,6 +83,7 @@ async function showDetail(id){
   const {installation:i,operations}=await api('/api/installations/'+id);
   selected=id;const box=$('detail');box.replaceChildren();
   box.append(el('h2',i.cellName+' — acompanhamento'));
+  if(i.proposedDomain)box.append(el('p','Domínio solicitado: https://'+i.proposedDomain+' (sujeito à disponibilidade)','notice'));
   const progress=el('ol',undefined,'steps');
   phases.forEach((name,index)=>progress.append(el('li',(index+1)+'. '+name,index<i.phaseIndex?'done':index===i.phaseIndex?'now':'')));
   box.append(progress);
