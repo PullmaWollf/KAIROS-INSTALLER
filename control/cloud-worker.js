@@ -94,9 +94,10 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
  async function precheck(row,ownerId,phase){
   // Recheck customer free tiers immediately before EVERY provisioner create.
   // An expired or upgraded plan pauses safely before the remote POST.
-  if(env.KAIROS_ZERO_COST_ONLY==='1'&&['github','supabase','vercel'].includes(phase))
+  if(env.KAIROS_ZERO_COST_ONLY==='1')
    await assertZeroCostEligibility({db,userId:ownerId,organizationId:row.supabase_org_id,
-    vercelTeamId:row.vercel_team_id,env,fetcher});
+    vercelTeamId:row.vercel_team_id,existingProjectRef:row.supabase_ref,
+    env,fetcher});
   if(phase==='github')await preflightGithub({fetcher,token:await token(ownerId,'github'),
    plan:{owner:row.owner,repository:row.repository}});
   if(['supabase','migrate','env','bootstrap'].includes(phase))
