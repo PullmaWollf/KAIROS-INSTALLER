@@ -25,33 +25,78 @@ async function initialize(){
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
    if(provider==='vercel'){
-    if(session.vercelTeam)card.append(el('small','Equipe: '+session.vercelTeam.teamSlug+' ('+session.vercelTeam.teamId+')','state-label'));
-    const form=document.createElement('form');form.autocomplete='off';
-    const teamLabel=el('label','ID da equipe Vercel');
-    const team=document.createElement('input');team.name='teamId';team.required=true;
-    team.placeholder='team_...';team.value=session.vercelTeam?.teamId||'';
-    team.autocomplete='off';team.maxLength=70;teamLabel.append(team);
-    const secretLabel=el('label','Token de acesso da sua conta Vercel');
+    if(session.vercelTeam)card.append(el('small','Equipe conectada: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId),'state-label'));
+    const guide=el('div',undefined,'vercel-guide');
+    guide.append(el('p','A hospedagem é sua: use a sua conta Vercel. Não precisa informar códigos técnicos.','state-label'));
+    const instructions=el('p','1. Abra a Vercel e crie um token com acesso à equipe onde deseja hospedar.','state-label');
+    const tokenLink=el('a','Abrir Vercel e criar token','link-button secondary');
+    tokenLink.href='https://vercel.com/account/tokens';
+    tokenLink.target='_blank';tokenLink.rel='noopener noreferrer';
+    guide.append(instructions,tokenLink,el('p','2. Copie o token e cole abaixo. O KAIRÓS identifica sua equipe automaticamente.','state-label'));
+    card.append(guide);
+    const form=document.createElement('form');form.className='vercel-connect-form';
+    form.autocomplete='off';
+    const tokenLabel=el('label','Token de acesso da Vercel');
     const secret=document.createElement('input');secret.type='password';
     secret.name='accessToken';secret.required=true;secret.minLength=20;secret.maxLength=512;
-    secret.autocomplete='new-password';secret.placeholder='Cole seu token de acesso';
-    secretLabel.append(secret);
-    const submit=el('button',connected?'Substituir credencial':'Verificar e conectar','primary');
-    submit.type='submit';form.append(teamLabel,secretLabel,submit);
-    form.addEventListener('submit',async e=>{
-     e.preventDefault();submit.disabled=true;
-     try{
-      await api('/api/connections/vercel',{method:'POST',
-       body:JSON.stringify({teamId:team.value.trim(),accessToken:secret.value.trim()})});
-      notify('Acesso à equipe Vercel validado. Credencial protegida no servidor.');
-      secret.value='';await initialize();
-     }catch(error){notify(error.message);secret.value='';}
-     finally{submit.disabled=false;}
+    secret.autocomplete='new-password';secret.placeholder='Cole o token aqui';
+    tokenLabel.append(secret);
+    const submit=el('button','Conectar minha Vercel','primary');
+    submit.type='submit';
+    const status=el('p','','state-label');
+    status.setAttribute('role','status');
+    form.append(tokenLabel,submit,status);
+    let options=null,choice=null;
+    secret.addEventListener('input',()=>{
+     options=null;if(choice){choice.remove();choice=null;}
+     submit.textContent='Conectar minha Vercel';status.textContent='';
     });
-    const link=el('a','Criar token de acesso na Vercel','link-button secondary');
-    link.href='https://vercel.com/account/tokens';link.target='_blank';
-    link.rel='noopener noreferrer';
-    card.append(form,link);
+    form.addEventListener('submit',async event=>{
+     event.preventDefault();submit.disabled=true;
+     const accessToken=secret.value.trim();
+     try{
+      if(!options){
+       status.textContent='Identificando suas equipes na Vercel…';
+       const found=await api('/api/connections/vercel/teams',{method:'POST',
+        body:JSON.stringify({accessToken})});
+       options=found.teams;
+       if(!Array.isArray(options)||!options.length){
+        options=null;status.textContent='Nenhuma equipe encontrada. Verifique se o token tem acesso a uma equipe Vercel. Tokens somente pessoais ainda não são aceitos nesta versão.';
+        secret.value='';return;
+       }
+       if(found.hasMore){options=null;status.textContent='Sua conta tem muitas equipes. Entre em contato com o suporte para selecionar a equipe correta.';secret.value='';return;}
+       if(options.length>1){
+        choice=el('select');choice.setAttribute('aria-label','Escolha a equipe Vercel');
+        for(const item of options){
+         const option=el('option',item.name+(item.slug?' ('+item.slug+')':''));
+         option.value=item.teamId;choice.append(option);
+        }
+        form.insertBefore(choice,submit);
+        submit.textContent='Conectar equipe escolhida';
+        status.textContent='3. Escolha sua equipe e clique novamente para concluir.';
+        return;
+       }
+      }
+      const teamId=choice?choice.value:options[0].teamId;
+      if(!options.some(item=>item.teamId===teamId))throw Error('Equipe inválida');
+      status.textContent='Verificando acesso à equipe…';
+      await api('/api/connections/vercel',{method:'POST',
+       body:JSON.stringify({teamId,accessToken})});
+      secret.value='';notify('Sua Vercel foi conectada com segurança.');
+      await initialize();
+     }catch(error){
+      secret.value='';options=null;
+      if(choice){choice.remove();choice=null;}
+      submit.textContent='Conectar minha Vercel';
+      status.textContent='Não foi possível conectar. Confira o token e o acesso à equipe.';
+      notify(error.message);
+     }finally{submit.disabled=false;}
+    });
+    if(connected){
+     form.hidden=true;
+     card.append(button('Atualizar conexão',()=>{form.hidden=false;secret.focus();},'secondary'));
+    }
+    card.append(form);
    }else{
     const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
     link.href='/api/auth/start?provider='+provider;card.append(link);

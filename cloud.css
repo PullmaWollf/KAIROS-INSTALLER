@@ -2,3 +2,5 @@
 
 #logout[hidden]{display:none}
 .header>.toolbar{align-items:center;margin:0}
+
+.vercel-guide{display:grid;gap:7px}.vercel-guide p{margin:0;line-height:1.45}.vercel-connect-form{display:grid;gap:9px;margin-top:8px}.vercel-connect-form[hidden]{display:none}.vercel-connect-form .state-label{margin:0}.vercel-connect-form button{width:100%}
