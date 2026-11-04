@@ -1,0 +1,47 @@
+name: KAIRÓS — Executor automático isolado
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: kairos-installer-automation
+  cancel-in-progress: false
+jobs:
+  provision:
+    if: github.repository == 'PullmaWollf/KAIROS-INSTALLER'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CRON_SECRET: ${{ secrets.KAIROS_AUTOMATION_CRON_SECRET }}
+      TICK_URL: https://kairos-installer-homolog.vercel.app/api/automation/tick
+    steps:
+      - name: Processar etapas persistentes, sem acesso a tokens de clientes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CRON_SECRET}" ]]; then
+            echo "Executor nao configurado: nenhum recurso sera criado."
+            exit 0
+          fi
+          for iteration in $(seq 1 8); do
+            reply="$(curl --fail-with-body --silent --show-error --max-time 55 \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H 'Accept: application/json' "${TICK_URL}")"
+            state="$(printf '%s' "${reply}" | jq -er '.status')"
+            case "${state}" in
+              queued)
+                echo "Etapa confirmada; verificando proxima tarefa."
+                sleep 5
+                ;;
+              idle|completed|waiting|paused)
+                echo "Executor terminou ciclo: ${state}."
+                exit 0
+                ;;
+              *)
+                echo "Resposta inesperada do executor."
+                exit 1
+                ;;
+            esac
+          done
