@@ -64,6 +64,18 @@ test('no free Supabase project slots strictly denies remote creation',async()=>{
  assert.equal(result.supabase.reason,'FREE_QUOTA_FULL');
  await assert.rejects(assertZeroCostEligibility(args(fetcher)),{code:'ZERO_COST_NOT_VERIFIED'});
 });
+test('after creating second Free project, its own exact ref remains eligible for remaining phases',async()=>{
+ const projectRef='abcdefghijklmnopqrst';
+ const {fetcher}=simulate({projects:[
+  {status:'ACTIVE_HEALTHY',ref:'priorproject123456',organization_id:organizationId},
+  {status:'ACTIVE_HEALTHY',ref:projectRef,organization_id:organizationId}
+ ]});
+ const report=await zeroCostAudit(args(fetcher,{existingProjectRef:projectRef}));
+ assert.equal(report.eligible,true);
+ assert.equal(report.supabase.reason,'EXISTING_FREE_PROJECT');
+ const someoneElse=await zeroCostAudit(args(fetcher,{existingProjectRef:'notourproject1234567'}));
+ assert.equal(someoneElse.eligible,false);
+});
 test('paid Supabase or Vercel plans and unknown billing are denied',async()=>{
  for(const variant of [{plan:'pro'},{vercelPlan:'pro'},{vercelPlan:null}]){
   const {fetcher}=simulate(variant);
