@@ -37,3 +37,12 @@ test('erros do GitHub ocultam detalhes do token',async()=>{
  const fetcher=async()=>json(403,{message:'contains secret'});
  await assert.rejects(preflightGithub({fetcher,token:'private-value',plan:input}),e=>e.code==='GITHUB_PERMISSION'&&!e.message.includes('private-value'));
 });
+
+
+test('GitHub template generation refuses a repo that was not confirmed private',async()=>{
+ const plan={owner:'customer',repository:'kairos-hml-demo',cellName:'HML Demo',visibility:'private'};
+ const fetcher=async()=>json(201,{full_name:'customer/kairos-hml-demo',
+  owner:{login:'customer'},html_url:'https://github.com/customer/kairos-hml-demo',private:false});
+ await assert.rejects(createGithubFromTemplate({fetcher,token:'test',plan}),
+  {code:'VISIBILITY_UNCONFIRMED'});
+});

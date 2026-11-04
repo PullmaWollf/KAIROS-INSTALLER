@@ -35,5 +35,8 @@ export async function createGithubFromTemplate({fetcher=fetch,token,plan}){
  });
  if(repo.full_name?.toLowerCase()!==(plan.owner+'/'+plan.repository).toLowerCase()||repo.owner?.login?.toLowerCase()!==plan.owner.toLowerCase())
   throw new ProvisioningError('RESULT_MISMATCH','GitHub retornou repositório com proprietário inesperado. Verifique manualmente');
+ if(plan.visibility==='private'&&repo.private!==true)
+  throw new ProvisioningError('VISIBILITY_UNCONFIRMED',
+   'O GitHub não confirmou repositório privado; revise as permissões antes de continuar');
  return {repository:repo.full_name,url:repo.html_url,private:repo.private===true};
 }

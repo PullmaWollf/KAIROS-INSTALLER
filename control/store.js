@@ -77,6 +77,34 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
    const rows=await list('kairos_control_connections',{github_id:'eq.'+id,provider:'eq.'+provider,limit:'1'},'envelope');
    return rows?.[0]?.envelope||null;
   },
+  async enqueueAutomation({installationId,userId,row,expiresAt}){
+   if(!uuid.test(String(installationId||''))||!Number.isSafeInteger(userId)||userId<=0)
+    throw new ControlError('BAD_ID');
+   return query('/rest/v1/rpc/kairos_control_automation_enqueue',{method:'POST',body:{
+    p_installation:installationId,p_github_id:userId,p_owner:row.owner,
+    p_repository:row.repository,p_supabase_org_id:row.supabase_org_id,
+    p_vercel_team_id:row.vercel_team_id,p_accept_billing:true,p_expires_at:expiresAt
+   }});
+  },
+  async automation(userId,installationId){
+   if(!Number.isSafeInteger(userId)||!uuid.test(String(installationId||'')))
+    throw new ControlError('BAD_ID');
+   const rows=await list('kairos_control_automation_jobs',{
+    github_id:'eq.'+userId,installation_id:'eq.'+installationId,limit:'1'
+   },'state,next_run_at,expires_at,updated_at,last_error');
+   return rows?.[0]||null;
+  },
+  async claimAutomation(){
+   return query('/rest/v1/rpc/kairos_control_automation_claim',{method:'POST',body:{}});
+  },
+  async settleAutomation({installationId,claimId,state,error=null,delaySeconds=0}){
+   if(!uuid.test(String(installationId||''))||!uuid.test(String(claimId||'')))
+    throw new ControlError('BAD_ID');
+   return query('/rest/v1/rpc/kairos_control_automation_settle',{method:'POST',body:{
+    p_installation:installationId,p_claim:claimId,p_state:state,
+    p_error:error,p_delay_seconds:delaySeconds
+   }});
+  },
   async createInstallation(id,plan){
    const rows=await query('/rest/v1/kairos_control_installations',{
     method:'POST',headers:{Prefer:'return=representation'},body:{github_id:id,...plan}});

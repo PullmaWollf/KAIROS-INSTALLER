@@ -8,6 +8,7 @@ import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/en
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
 import {preinstallationAudit} from '../control/preinstall-audit.js';
 import {vercelQuery} from '../provisioner/vercel-scope.js';
+import {automationReady,assertAutomationCaller,authorizeAutomation,tickAutomation} from '../control/automation.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
 function errCode(e){return e instanceof ControlError?e.code:'INTERNAL_ERROR';}
@@ -33,6 +34,11 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    if(req.method==='GET'&&url.pathname==='/api/health'){
     const ready=await db.health();
     return json(res,ready?200:503,{ok:ready,ready});
+   }
+   // Private scheduler: a CRON_SECRET is mandatory; no browser session is accepted.
+   if(req.method==='GET'&&url.pathname==='/api/automation/tick'){
+    assertAutomationCaller(req.headers.authorization,env);
+    return json(res,200,await tickAutomation({db,env,fetcher}));
    }
    const rawSession=cookieValue(req,sessionName);
    const user=rawSession?await db.session(rawSession):null;
@@ -155,6 +161,24 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     if(!installation)throw new ControlError('STORE_UNAVAILABLE');
     return json(res,201,{installation});
    }
+   const automation=url.pathname.match(/^\/api\/installations\/([a-f0-9-]{36})\/automation(?:\/(start))?$/i);
+   if(automation&&req.method==='GET'&&!automation[2]){
+    const row=await db.installation(user.id,automation[1]);
+    if(!row)throw new ControlError('NOT_FOUND');
+    const job=await db.automation(user.id,row.id);
+    return json(res,200,{enabled:automationReady(env),automation:job?{
+     state:job.state,updatedAt:job.updated_at,nextRunAt:job.next_run_at,
+     expiresAt:job.expires_at,lastError:job.last_error
+    }:null});
+   }
+   if(automation&&req.method==='POST'&&automation[2]==='start'){
+    requireMutation(req,rawSession,{env});
+    const row=await db.installation(user.id,automation[1]);
+    if(!row)throw new ControlError('NOT_FOUND');
+    const approval=await readJSON(req);
+    const result=await authorizeAutomation({db,userId:user.id,row,approval,env});
+    return json(res,202,result);
+   }
    const detail=url.pathname.match(/^\/api\/installations\/([a-f0-9-]{36})$/i);
    if(detail&&req.method==='GET'){
     const row=await db.installation(user.id,detail[1]);
@@ -192,13 +216,15 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    if(url.pathname==='/api/readiness'&&req.method==='GET'){
     return json(res,200,{ready:await db.health(),oauthConnected:await db.connections(user.id),
      supportedPhases:phaseFor(0)?8:0,remoteProvisioningEnabled:env.KAIROS_CONTROL_ENABLE_WRITES==='1',
-     homologated:false});
+     backgroundAutomationEnabled:automationReady(env),homologated:false});
    }
    return json(res,404,{ok:false,error:'NOT_FOUND'});
   }catch(e){
    // Never expose provider error response bodies, access tokens or database details.
    const code=errCode(e);
    const status=code==='LOGIN_REQUIRED'?401:code==='NOT_FOUND'?404:
+    code==='WORKER_UNAUTHORIZED'?401:
+    code==='AUTOMATION_DISABLED'||code==='HOMOLOGATION_LOCKED'||
     code==='WRITES_DISABLED'||code==='BETA_SQL_DISABLED'||code==='VERCEL_SCOPE_REQUIRED'?423:
     code==='NOT_CONFIGURED'||code==='STORE_UNAVAILABLE'||code==='STORE_NETWORK'?503:
     code==='INTERNAL_ERROR'?500:400;
