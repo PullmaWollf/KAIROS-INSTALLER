@@ -77,10 +77,13 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
    const rows=await list('kairos_control_connections',{github_id:'eq.'+id,provider:'eq.'+provider,limit:'1'},'envelope');
    return rows?.[0]?.envelope||null;
   },
-  async enqueueAutomation({installationId,userId,row,expiresAt}){
-   if(!uuid.test(String(installationId||''))||!Number.isSafeInteger(userId)||userId<=0)
+  async enqueueAutomation({installationId,userId,row,expiresAt,mode='homologation'}){
+   if(!uuid.test(String(installationId||''))||!Number.isSafeInteger(userId)||userId<=0||
+      !['homologation','production'].includes(mode))
     throw new ControlError('BAD_ID');
-   return query('/rest/v1/rpc/kairos_control_automation_enqueue',{method:'POST',body:{
+   const rpc=mode==='production'?'kairos_control_automation_enqueue_production':
+    'kairos_control_automation_enqueue';
+   return query('/rest/v1/rpc/'+rpc,{method:'POST',body:{
     p_installation:installationId,p_github_id:userId,p_owner:row.owner,
     p_repository:row.repository,p_supabase_org_id:row.supabase_org_id,
     p_vercel_team_id:row.vercel_team_id,p_accept_billing:true,p_expires_at:expiresAt
@@ -91,7 +94,7 @@ export function controlStore({fetcher=fetch,env=process.env}={}){
     throw new ControlError('BAD_ID');
    const rows=await list('kairos_control_automation_jobs',{
     github_id:'eq.'+userId,installation_id:'eq.'+installationId,limit:'1'
-   },'state,next_run_at,expires_at,updated_at,last_error');
+   },'installation_id,github_id,owner,repository,supabase_org_id,vercel_team_id,accept_billing,authorized_at,mode,state,next_run_at,expires_at,updated_at,last_error');
    return rows?.[0]||null;
   },
   async claimAutomation(){
