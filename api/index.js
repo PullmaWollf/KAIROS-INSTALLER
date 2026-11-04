@@ -5,7 +5,7 @@ import {validateCloudPlan,safeInstallation,phaseFor} from '../control/plan.js';
 import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAuth,openOAuth,responseHeaders,json,redirect,readJSON} from '../control/http.js';
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
-import {connectVercel,readVercelConnection,publicVercelConnection} from '../control/vercel-connection.js';
+import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
 function errCode(e){return e instanceof ControlError?e.code:'INTERNAL_ERROR';}
@@ -98,6 +98,11 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     const {provider}=await readJSON(req);
     await db.disconnect(user.id,provider);
     return json(res,200,{ok:true,provider});
+   }
+   if(url.pathname==='/api/connections/vercel/teams'&&req.method==='POST'){
+    requireMutation(req,rawSession,{env});
+    const teams=await discoverVercelTeams({userId:user.id,payload:await readJSON(req),env,fetcher});
+    return json(res,200,teams);
    }
    if(url.pathname==='/api/connections/vercel'&&req.method==='POST'){
     requireMutation(req,rawSession,{env});

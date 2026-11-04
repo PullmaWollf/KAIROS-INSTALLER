@@ -20,6 +20,25 @@ export function validateVercelInput(value,env=process.env){
  return {teamId,accessToken};
 }
 
+/** Read-only team discovery; token is never persisted or echoed. */
+export async function discoverVercelTeams({userId,payload,env=process.env,fetcher=fetch}){
+ if(!Number.isSafeInteger(userId)||userId<=0)throw new ControlError('LOGIN_REQUIRED');
+ if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+    Object.keys(payload).join(',')!=='accessToken'||typeof payload.accessToken!=='string'||
+    !TOKEN.test(payload.accessToken))
+  throw new ControlError('BAD_VERCEL_CREDENTIAL');
+ let result;
+ try{
+  result=await providerGet({fetcher,base:'https://api.vercel.com',
+   path:'/v2/teams?limit=100',token:payload.accessToken,provider:'Vercel'});
+ }catch{throw new ControlError('VERCEL_VERIFICATION_FAILED','Token inválido ou sem acesso à Vercel');}
+ if(!Array.isArray(result?.teams))throw new ControlError('VERCEL_VERIFICATION_FAILED');
+ const teams=result.teams.filter(t=>t&&TEAM_ID.test(t.id||'')&&
+  t.id!==env.KAIROS_VERCEL_TEAM_ID)
+  .map(t=>({teamId:t.id,name:String(t.name||t.slug||'Equipe').slice(0,80),
+   slug:String(t.slug||'').slice(0,80)}));
+ return {teams,hasMore:!!result.pagination?.next};
+}
 /** Never return provider tokens or raw provider bodies to the client. */
 export async function connectVercel({db,userId,payload,env=process.env,fetcher=fetch}){
  if(!Number.isSafeInteger(userId)||userId<=0)throw new ControlError('LOGIN_REQUIRED');
