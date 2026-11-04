@@ -7,6 +7,7 @@ import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
 import {preinstallationAudit} from '../control/preinstall-audit.js';
+import {zeroCostAudit} from '../control/zero-cost-audit.js';
 import {vercelQuery} from '../provisioner/vercel-scope.js';
 import {automationReady,authorizeAutomation,tickAutomation} from '../control/automation.js';
 import {verifyAutomationIdentity} from '../control/automation-oidc.js';
@@ -148,6 +149,14 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    }
    if(url.pathname==='/api/preinstallation-audit'&&req.method==='GET'){
     const report=await preinstallationAudit({db,user,env,fetcher});
+    return json(res,200,report);
+   }
+   if(url.pathname==='/api/zero-cost-audit'&&req.method==='GET'){
+    const organizationId=url.searchParams.get('supabaseOrgId');
+    const hosting=await readVercelConnection({db,userId:user.id,env});
+    const report=await zeroCostAudit({
+     db,userId:user.id,organizationId,vercelTeamId:hosting?.teamId,env,fetcher
+    });
     return json(res,200,report);
    }
    if(url.pathname==='/api/installations'&&req.method==='GET'){
