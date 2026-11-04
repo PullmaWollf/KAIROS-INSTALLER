@@ -144,6 +144,32 @@ async function initialize(){
  }
 }
 
+const githubVercelMessages={
+ VERCEL_NOT_CONNECTED:'Primeiro conecte sua conta Vercel no passo 1.',
+ VERCEL_GITHUB_CHECK_UNAVAILABLE:'A Vercel não respondeu. Confira seu token Vercel e tente novamente.',
+ GITHUB_NOT_CONNECTED_TO_VERCEL:'Seu GitHub ainda não aparece conectado. Clique em Conectar GitHub na Vercel, autorize a conta correta e depois verifique novamente.',
+ VERCEL_GITHUB_REAUTH_REQUIRED:'A Vercel solicitou uma nova autorização do GitHub.',
+ VERCEL_GITHUB_REPOSITORIES_RESTRICTED:'A integração existe, mas o acesso está limitado a alguns repositórios. Autorize acesso ao futuro repositório da célula.',
+ VERCEL_GITHUB_ACCESS_UNKNOWN:'A integração apareceu, mas o acesso a novos repositórios não foi confirmado. Revise as permissões na Vercel.',
+ VERCEL_GITHUB_PERMISSION_UNCONFIRMED:'Seu acesso à integração não confirmou a permissão necessária para importar projetos.',
+ VERCEL_GITHUB_CONNECTED:'GitHub conectado! A Vercel indicou acesso não restrito ao GitHub desta conta. Nenhum projeto foi criado.'
+};
+async function runVercelGithubLinkCheck(){
+ const button=$('vercel-github-check'),target=$('vercel-github-results');
+ button.disabled=true;button.textContent='Verificando conexão…';
+ try{
+  const report=await api('/api/vercel/github-link');
+  target.replaceChildren(el('p',githubVercelMessages[report.reason]||
+   'A conexão GitHub ↔ Vercel ainda não foi comprovada.',
+   report.canImportNewRepositories?'preflight-info':'preflight-warning'));
+  if(report.connected&&report.canImportNewRepositories)
+   target.append(el('p','Verificação apenas de leitura. A instalação efetiva ainda validará acesso ao repositório que for criado.','muted'));
+ }catch(error){
+  target.replaceChildren(el('p','Não foi possível verificar: '+error.message,'preflight-warning'));
+ }finally{button.disabled=false;button.textContent='Verificar conexão GitHub ↔ Vercel';}
+}
+$('vercel-github-check').addEventListener('click',runVercelGithubLinkCheck);
+
 function renderPreinstallationAudit(report){
  const area=$('preinstall-results');area.replaceChildren();
  const names={github:'GitHub — repositório do modelo',supabase:'Supabase — banco de dados',vercel:'Vercel — hospedagem'};
