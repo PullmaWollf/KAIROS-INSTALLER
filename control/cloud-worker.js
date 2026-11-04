@@ -9,7 +9,7 @@ import {createSupabaseProject,createVercelProject} from '../provisioner/create-p
 import {preflightSupabase,preflightVercel} from '../provisioner/providers.js';
 import {configureVercelEnvironment} from '../provisioner/vercel-env.js';
 import {checkDeployment} from '../provisioner/deployment.js';
-import {projectSlugForCell} from '../provisioner/cell-domain.js';
+import {projectSlugForCell,ensureCellDomain,verifiedCellDomain} from '../provisioner/cell-domain.js';
 import {smokeTest} from '../provisioner/smoke.js';
 import {reconcileGithub,reconcileSupabase,reconcileVercel} from '../provisioner/reconcile.js';
 const scrypt=promisify(scryptCb);
@@ -94,7 +94,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    plan:{owner:row.owner,repository:row.repository}});
   if(['supabase','migrate','env','bootstrap'].includes(phase))
    await preflightSupabase({fetcher,token:await token(ownerId,'supabase'),organizationId:row.supabase_org_id});
-  if(['vercel','env','deploy'].includes(phase)){
+  if(['vercel','env','deploy','smoke'].includes(phase)){
    if(env.KAIROS_VERCEL_MANAGEMENT_ENABLED!=='1')throw new ControlError('VERCEL_SCOPE_REQUIRED','Permissões de gerenciamento da Vercel ainda não habilitadas');
    await preflightVercel({fetcher,token:await vercelToken(row.vercel_team_id,ownerId),teamId:row.vercel_team_id});
   }
@@ -202,8 +202,11 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    return {waiting:true,reason:'DEPLOY_TRIGGERED'};
   }
   if(phase==='smoke'){
-   await smokeTest({url:row.pwa_origin,fetcher,approved:true});
-   return {receipt:{},readOnly:true};
+   const token=await vercelToken(row.vercel_team_id,ownerId);
+   const domain=await ensureCellDomain({fetcher,token,teamId:row.vercel_team_id,
+    projectId:row.vercel_project_id,cellName:row.cell_name});
+   await smokeTest({url:domain.url,fetcher,approved:true});
+   return {receipt:{url:domain.url}};
   }
   throw new ControlError('BAD_PHASE');
  }
@@ -217,8 +220,11 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    return {status:'waiting'};
   }
   if(phase==='smoke'){
-   await smokeTest({url:row.pwa_origin,fetcher,approved:true});
-   return {status:'verified',receipt:{}};
+   const domain=await verifiedCellDomain({fetcher,token:await vercelToken(row.vercel_team_id,ownerId),
+    teamId:row.vercel_team_id,projectId:row.vercel_project_id,cellName:row.cell_name});
+   if(!domain)return {status:'waiting'};
+   await smokeTest({url:domain.url,fetcher,approved:true});
+   return {status:'verified',receipt:{url:domain.url}};
   }
   if(phase==='github'){
    return reconcileGithub({fetcher,token:await token(ownerId,'github'),owner:row.owner,repository:row.repository});
