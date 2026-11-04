@@ -4,6 +4,7 @@ import {assertHomologationScope} from './homologation-guard.js';
 import {validateProductionScope,assertExecutionScope} from './production-guard.js';
 import {executeCloudStep,reconcileCloudStep} from './engine.js';
 import {cloudOps} from './cloud-worker.js';
+import {assertZeroCostEligibility} from './zero-cost-audit.js';
 
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const allowedErrors=/^[A-Z0-9_]{2,40}$/;
@@ -32,7 +33,7 @@ function matchesJob(job,row){
 /** Approval stored in DB as a snapshot of the exact authorized destinations.
  * Queueing does not run a provider POST and cannot run while any safety gate is off.
  */
-export async function authorizeAutomation({db,userId,row,approval,login,env=process.env}){
+export async function authorizeAutomation({db,userId,row,approval,login,env=process.env,fetcher=fetch}){
  requireLiveAutomation(env);
  if(!row||!uuid.test(row.id)||Number(row.phase_index)!==0||
   !approval||approval.execute!==true||approval.acceptBilling!==true||
@@ -44,6 +45,9 @@ export async function authorizeAutomation({db,userId,row,approval,login,env=proc
  const production=env.KAIROS_PRODUCTION_MODE==='1';
  if(production)validateProductionScope({env,userId,row,login});
  else assertHomologationScope({env,userId,row});
+ if(env.KAIROS_ZERO_COST_ONLY==='1')
+  await assertZeroCostEligibility({db,userId,organizationId:row.supabase_org_id,
+   vercelTeamId:row.vercel_team_id,env,fetcher});
  const expiresAt=production?new Date(Date.now()+72*3600000).toISOString():
   env.KAIROS_HML_EXPIRES_AT;
  const receipt=await db.enqueueAutomation({
