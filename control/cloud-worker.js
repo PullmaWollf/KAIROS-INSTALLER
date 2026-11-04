@@ -98,7 +98,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    await preflightSupabase({fetcher,token:await token(ownerId,'supabase'),organizationId:row.supabase_org_id});
   if(['vercel','env','deploy'].includes(phase)){
    if(env.KAIROS_VERCEL_MANAGEMENT_ENABLED!=='1')throw new ControlError('VERCEL_SCOPE_REQUIRED','Permissões de gerenciamento da Vercel ainda não habilitadas');
-   await preflightVercel({fetcher,token:await vercelToken(row.vercel_team_id),teamId:row.vercel_team_id});
+   await preflightVercel({fetcher,token:await vercelToken(row.vercel_team_id),teamId:row.vercel_team_id,operatorMode:true});
   }
   if(phase==='migrate'&&env.KAIROS_ENABLE_BETA_SQL!=='1')
    throw new ControlError('BETA_SQL_DISABLED','Endpoint de migrações Supabase beta não autorizado');
@@ -138,7 +138,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    return {receipt:{}};
   }
   if(phase==='vercel'){
-   const result=await createVercelProject({fetcher,token:await vercelToken(row.vercel_team_id),approved:true,
+   const result=await createVercelProject({fetcher,token:await vercelToken(row.vercel_team_id),approved:true,operatorMode:true,
     plan:{teamId:row.vercel_team_id,projectName:row.repository,repoOwner:row.owner,repoName:row.repository}});
    return {receipt:{projectId:result.projectId}};
   }

@@ -29,11 +29,11 @@ async function verifyProject({fetcher,token,teamId,projectId,repository}){
  if(!link||link.type!=='github'||String(link.repo||'').toLowerCase()!==repository.toLowerCase())throw new ProvisioningError('WRONG_REPO','Vincule e confira o GitHub da própria célula no projeto Vercel antes de configurar segredos');
  return true;
 }
-export async function configureVercelEnvironment({fetcher=fetch,token,target,secrets,approved=false}){
+export async function configureVercelEnvironment({fetcher=fetch,token,target,secrets,approved=false,operatorMode=false}){
  if(!approved)throw new ProvisioningError('CONSENT','Confirme a configuração de segredos no projeto correto');
  const plan=environmentPlan(target);
  const vars=validateSecrets(secrets);
- await preflightVercel({fetcher,token,teamId:plan.teamId});
+ await preflightVercel({fetcher,token,teamId:plan.teamId,operatorMode});
  await verifyProject({fetcher,token,teamId:plan.teamId,projectId:plan.projectId,repository:plan.repository});
  const path='/v10/projects/'+encodeURIComponent(plan.projectId)+'/env?teamId='+encodeURIComponent(plan.teamId);
  const old=await providerGet({fetcher,token,base:BASE,path,provider:'Vercel'});
