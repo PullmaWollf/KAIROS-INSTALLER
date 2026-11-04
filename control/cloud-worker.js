@@ -13,6 +13,7 @@ import {checkDeployment} from '../provisioner/deployment.js';
 import {projectSlugForCell,ensureCellDomain,verifiedCellDomain} from '../provisioner/cell-domain.js';
 import {smokeTest} from '../provisioner/smoke.js';
 import {reconcileGithub,reconcileSupabase,reconcileVercel} from '../provisioner/reconcile.js';
+import {assertZeroCostEligibility} from './zero-cost-audit.js';
 const scrypt=promisify(scryptCb);
 const ID=/^[a-z0-9]{10,30}$/i;
 const customerUrl=ref=>'https://'+ref+'.supabase.co';
@@ -91,6 +92,11 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
   return credential.accessToken;
  }
  async function precheck(row,ownerId,phase){
+  // Recheck customer free tiers immediately before EVERY provisioner create.
+  // An expired or upgraded plan pauses safely before the remote POST.
+  if(env.KAIROS_ZERO_COST_ONLY==='1'&&['github','supabase','vercel'].includes(phase))
+   await assertZeroCostEligibility({db,userId:ownerId,organizationId:row.supabase_org_id,
+    vercelTeamId:row.vercel_team_id,env,fetcher});
   if(phase==='github')await preflightGithub({fetcher,token:await token(ownerId,'github'),
    plan:{owner:row.owner,repository:row.repository}});
   if(['supabase','migrate','env','bootstrap'].includes(phase))
