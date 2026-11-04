@@ -34,19 +34,26 @@ button.secondary{color:#dbeeff;background:#2a3d55}button:disabled{opacity:.5;cur
 <label>Hospedagem Vercel (escopo pessoal)<input name="vercelScope" required value="personal_x4YO1nK4AxoR8npqTQwx9DNt"></label>
 <label>Região do banco<select name="region"><option value="sa-east-1">Brasil · São Paulo</option><option value="us-east-1">EUA · Leste</option></select></label></div>
 <p class="guidance">As contas acima foram observadas na auditoria inicial; o servidor verificará novamente a propriedade, os planos gratuitos e a conexão GitHub ↔ Vercel.</p></section>
-<section><h2>2. Identificação da célula</h2><div class="grid">
+<section id="github-vercel-link"><h2>2. Conectar o GitHub à Vercel</h2>
+<p>A Vercel precisa de autorização para importar automaticamente o repositório privado que o KAIRÓS criará. Clique abaixo e conclua a autorização na sua conta Vercel, sem compartilhar senhas com o Installer.</p>
+<div class="actions"><a class="secondary" href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;min-height:46px;padding:12px 17px;border-radius:11px;background:#2a3d55;color:#dbeeff;text-decoration:none;font-weight:700">Conectar GitHub à Vercel</a>
+<button type="button" class="secondary" id="check-git-link">Verificar integração</button></div>
+<p class="guidance">A verificação usa a conta Vercel informada abaixo e consulta somente a API. Não cria nem importa projetos.</p>
+<div id="git-link-result" role="status" aria-live="polite"></div>
+</section>
+<section><h2>3. Identificação da célula</h2><div class="grid">
 <label>Nome da célula<input name="cellName" required minlength="3" value="HML Célula Teste"></label>
 <label>Repositório privado<input name="repository" required pattern="kairos-hml-[a-z0-9-]+" value="kairos-hml-celula-teste"></label>
 <label>Login do primeiro administrador<input name="adminLogin" required value="administrador"></label>
 <label>Senha inicial do administrador<input name="adminPassword" type="password" required minlength="20" autocomplete="new-password" placeholder="Crie uma senha forte e guarde-a"></label></div></section>
-<section><h2>3. Autorizar as contas temporariamente</h2>
+<section><h2>4. Autorizar as contas temporariamente</h2>
 <p>Esta versão técnica usa chaves temporárias. Elas são enviadas pelo HTTPS, criptografadas como segredos do GitHub Actions e removidas após a execução, inclusive quando o job falha. <strong>O Installer não as armazena.</strong></p>
 <div class="grid">
 <label>Token GitHub — permissões repo e workflow (incluindo secrets e variables)<a class="guidance" target="_blank" rel="noopener noreferrer" href="https://github.com/settings/tokens">Criar token no GitHub</a><input name="githubToken" type="password" required minlength="20" autocomplete="off"></label>
 <label>Token Supabase — gerenciamento<a class="guidance" target="_blank" rel="noopener noreferrer" href="https://supabase.com/dashboard/account/tokens">Criar token no Supabase</a><input name="supabaseToken" type="password" required minlength="20" autocomplete="off"></label>
 <label class="full">Token Vercel — acesso à conta de teste<a class="guidance" target="_blank" rel="noopener noreferrer" href="https://vercel.com/account/tokens">Criar token na Vercel</a><input name="vercelToken" type="password" required minlength="20" autocomplete="off"></label>
 </div><p class="guidance">Pré-requisito: conectar o GitHub à Vercel, permitindo acesso ao repositório criado automaticamente. Nunca envie tokens por chat.</p></section>
-<section><h2>4. Proteção de custo zero</h2>
+<section><h2>5. Proteção de custo zero</h2>
 <label class="checkbox"><input type="checkbox" name="approveFreeOnly" required> <span>Quero utilizar exclusivamente planos gratuitos. Se o plano ou quota não puder ser verificado, o KAIRÓS deve bloquear a instalação.</span></label>
 <label class="checkbox"><input type="checkbox" name="personalNonCommercial" required> <span>Confirmo que é um teste pessoal não comercial, adequado ao plano Vercel Hobby.</span></label>
 <p class="guidance">O sistema limita a seleção aos planos Free/Hobby; nenhum software pode prometer que o uso futuro nunca terá custo em serviços externos.</p>
@@ -62,6 +69,22 @@ function values(){const f=new FormData(form),o=Object.fromEntries(f.entries());o
 function feedback(text){result.textContent=text;}
 async function send(endpoint){const response=await fetch(endpoint,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(values())});const data=await response.json();if(!response.ok)throw new Error(data.error||'Erro de conexão');return data;}
 for(const input of form.querySelectorAll('input,select'))input.addEventListener('input',()=>{audited=false;launchButton.disabled=true;});
+document.getElementById('check-git-link').addEventListener('click',async()=>{
+ const output=document.getElementById('git-link-result');
+ if(!form.reportValidity()){
+  output.textContent='Preencha os dados e tokens de teste abaixo antes de verificar a integração.';
+  return;
+ }
+ const check=document.getElementById('check-git-link');
+ check.disabled=true;output.textContent='Verificando GitHub ↔ Vercel com suas credenciais temporárias…';
+ try{
+  const report=await send('/api/preflight');
+  output.textContent=report.ok?
+   '✓ Conta GitHub conectada à Vercel e planos gratuitos observados. Nenhum projeto foi criado.':
+   'Conexão ainda não comprovada.';
+ }catch(error){output.textContent='Verificação não concluída: '+error.message;}
+ finally{check.disabled=false;}
+});
 auditButton.addEventListener('click',async()=>{
  if(!form.reportValidity())return;
  auditButton.disabled=true;feedback('Consultando planos e integração das três contas...');
