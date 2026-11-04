@@ -81,6 +81,16 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    throw new ControlError('OAUTH_EXPIRED','Reconecte '+provider);
   return auth.accessToken;
  }
+ async function vercelToken(teamId){
+  // Private operator mode: this server credential is restricted to one explicitly
+  // configured team. Never fall back to an identity-only Vercel OAuth token.
+  const allowed=env.KAIROS_VERCEL_TEAM_ID;
+  const credential=env.KAIROS_VERCEL_ACCESS_TOKEN;
+  if(!allowed||teamId!==allowed)throw new ControlError('VERCEL_TEAM_FORBIDDEN');
+  if(typeof credential!=='string'||credential.length<12)
+   throw new ControlError('VERCEL_TOKEN_MISSING');
+  return credential;
+ }
  async function precheck(row,ownerId,phase){
   if(phase==='github')await preflightGithub({fetcher,token:await token(ownerId,'github'),
    plan:{owner:row.owner,repository:row.repository}});
@@ -88,7 +98,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    await preflightSupabase({fetcher,token:await token(ownerId,'supabase'),organizationId:row.supabase_org_id});
   if(['vercel','env','deploy'].includes(phase)){
    if(env.KAIROS_VERCEL_MANAGEMENT_ENABLED!=='1')throw new ControlError('VERCEL_SCOPE_REQUIRED','Permissões de gerenciamento da Vercel ainda não habilitadas');
-   await preflightVercel({fetcher,token:await token(ownerId,'vercel'),teamId:row.vercel_team_id});
+   await preflightVercel({fetcher,token:await vercelToken(row.vercel_team_id),teamId:row.vercel_team_id});
   }
   if(phase==='migrate'&&env.KAIROS_ENABLE_BETA_SQL!=='1')
    throw new ControlError('BETA_SQL_DISABLED','Endpoint de migrações Supabase beta não autorizado');
@@ -128,7 +138,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    return {receipt:{}};
   }
   if(phase==='vercel'){
-   const result=await createVercelProject({fetcher,token:await token(ownerId,'vercel'),approved:true,
+   const result=await createVercelProject({fetcher,token:await vercelToken(row.vercel_team_id),approved:true,
     plan:{teamId:row.vercel_team_id,projectName:row.repository,repoOwner:row.owner,repoName:row.repository}});
    return {receipt:{projectId:result.projectId}};
   }
@@ -138,7 +148,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
     projectRef:row.supabase_ref,organizationId:row.supabase_org_id});
    credentials.sessionSecret ||= randomBytes(48).toString('base64url');
    await storeSecrets(row,credentials); // never in response or audit
-   await configureVercelEnvironment({fetcher,token:await token(ownerId,'vercel'),approved:true,
+   await configureVercelEnvironment({fetcher,token:await vercelToken(row.vercel_team_id),approved:true,
     target:{teamId:row.vercel_team_id,projectId:row.vercel_project_id,repoOwner:row.owner,repoName:row.repository},
     secrets:{SUPABASE_URL:customerUrl(row.supabase_ref),SUPABASE_SERVICE_ROLE_KEY:credentials.serviceKey,
      SESSION_SECRET:credentials.sessionSecret}});
@@ -158,7 +168,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    return {receipt:{}};
   }
   if(phase==='deploy'){
-   const vToken=await token(ownerId,'vercel');
+   const vToken=await vercelToken(row.vercel_team_id);
    const target={teamId:row.vercel_team_id,projectId:row.vercel_project_id};
    const prior=await db.operations(row.id);
    const configuredAt=Date.parse(prior.find(x=>x.phase==='env'&&x.status==='confirmed')?.finished_at||'');
@@ -203,7 +213,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
   // Reconciling only GET never repeats external POST; existence of a preexisting
   // resource cannot prove that this attempt created it.
   if(phase==='deploy'){
-   const v=await checkDeployment({fetcher,token:await token(ownerId,'vercel'),
+   const v=await checkDeployment({fetcher,token:await vercelToken(row.vercel_team_id),
     target:{teamId:row.vercel_team_id,projectId:row.vercel_project_id}});
    if(v.ready&&v.url&&v.createdAt>Date.parse(startedAt))return {status:'verified',receipt:{url:v.url}};
    return {status:'waiting'};
@@ -220,7 +230,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
     organizationId:row.supabase_org_id,projectName:row.repository});
   }
   if(phase==='vercel'){
-   return reconcileVercel({fetcher,token:await token(ownerId,'vercel'),
+   return reconcileVercel({fetcher,token:await vercelToken(row.vercel_team_id),
     teamId:row.vercel_team_id,projectName:row.repository,repository:row.owner+'/'+row.repository});
   }
   if(phase==='bootstrap'){
