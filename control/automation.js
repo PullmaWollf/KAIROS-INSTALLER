@@ -1,6 +1,7 @@
 import {ControlError} from './crypto.js';
 import {phaseFor} from './plan.js';
 import {assertHomologationScope} from './homologation-guard.js';
+import {validateProductionScope,assertExecutionScope} from './production-guard.js';
 import {executeCloudStep,reconcileCloudStep} from './engine.js';
 import {cloudOps} from './cloud-worker.js';
 
@@ -11,7 +12,8 @@ const safeCode=e=>allowedErrors.test(String(e?.code||''))?e.code:'REMOTE_UNCERTA
 /** A durable worker is inert until explicitly configured. No fallback to OAuth tokens. */
 export function automationReady(env=process.env){
  return env.KAIROS_AUTOMATION_ENABLED==='1'&&
-  env.KAIROS_HOMOLOGATION_MODE==='1'&&
+  (env.KAIROS_HOMOLOGATION_MODE==='1')!==
+   (env.KAIROS_PRODUCTION_MODE==='1')&&
   env.KAIROS_CONTROL_ENABLE_WRITES==='1'&&
   env.KAIROS_VERCEL_MANAGEMENT_ENABLED==='1'&&
   env.KAIROS_ENABLE_BETA_SQL==='1'&&
@@ -30,7 +32,7 @@ function matchesJob(job,row){
 /** Approval stored in DB as a snapshot of the exact authorized destinations.
  * Queueing does not run a provider POST and cannot run while any safety gate is off.
  */
-export async function authorizeAutomation({db,userId,row,approval,env=process.env}){
+export async function authorizeAutomation({db,userId,row,approval,login,env=process.env}){
  requireLiveAutomation(env);
  if(!row||!uuid.test(row.id)||Number(row.phase_index)!==0||
   !approval||approval.execute!==true||approval.acceptBilling!==true||
@@ -39,9 +41,14 @@ export async function authorizeAutomation({db,userId,row,approval,env=process.en
   approval.vercelTeamId!==row.vercel_team_id||
   approval.repository!==row.repository)
   throw new ControlError('CONSENT_REQUIRED');
- assertHomologationScope({env,userId,row});
- const expiresAt=env.KAIROS_HML_EXPIRES_AT;
- const receipt=await db.enqueueAutomation({installationId:row.id,userId,row,expiresAt});
+ const production=env.KAIROS_PRODUCTION_MODE==='1';
+ if(production)validateProductionScope({env,userId,row,login});
+ else assertHomologationScope({env,userId,row});
+ const expiresAt=production?new Date(Date.now()+72*3600000).toISOString():
+  env.KAIROS_HML_EXPIRES_AT;
+ const receipt=await db.enqueueAutomation({
+  installationId:row.id,userId,row,expiresAt,mode:production?'production':'homologation'
+ });
  if(receipt?.accepted!==true)throw new ControlError('AUTOMATION_REJECTED');
  return {accepted:true,state:receipt.state,installationId:row.id};
 }
@@ -61,7 +68,9 @@ export async function tickAutomation({db,env=process.env,fetcher=fetch,worker}){
  try{
   const row=await db.installation(job.userId,job.installationId);
   if(!matchesJob(job,row))throw new ControlError('AUTOMATION_SCOPE_DENIED');
-  assertHomologationScope({env,userId:job.userId,row});
+  await assertExecutionScope({
+   env,db,userId:job.userId,row,homologationGuard:assertHomologationScope
+  });
   if(Date.parse(job.expiresAt)<=Date.now())
    throw new ControlError('AUTOMATION_EXPIRED');
   phase=phaseFor(Number(row.phase_index));
