@@ -7,6 +7,7 @@ import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
 import {preinstallationAudit} from '../control/preinstall-audit.js';
+import {checkVercelGithubLink} from '../control/vercel-github-link.js';
 import {zeroCostAudit} from '../control/zero-cost-audit.js';
 import {vercelQuery} from '../provisioner/vercel-scope.js';
 import {automationReady,authorizeAutomation,tickAutomation} from '../control/automation.js';
@@ -146,6 +147,9 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
       status===404?'TEAM_NOT_FOUND':'PROVIDER_UNAVAILABLE',
      writesEnabled:env.KAIROS_CONTROL_ENABLE_WRITES==='1',
      managementEnabled:env.KAIROS_VERCEL_MANAGEMENT_ENABLED==='1'});
+   }
+   if(url.pathname==='/api/vercel/github-link'&&req.method==='GET'){
+    return json(res,200,await checkVercelGithubLink({db,user,env,fetcher}));
    }
    if(url.pathname==='/api/preinstallation-audit'&&req.method==='GET'){
     const report=await preinstallationAudit({db,user,env,fetcher});
