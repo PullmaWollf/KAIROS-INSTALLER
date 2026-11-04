@@ -10,7 +10,7 @@ export function projectSlugForCell(cellName){
  const label=cellName.normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')
   .slice(0,55).replace(/-+$/g,'');
- if(!/^[a-z0-9][a-z0-9-]{1,54}$/.test(label))
+ if(!/^[a-z0-9][a-z0-9-]{2,54}$/.test(label))
   throw new ControlError('BAD_CELL_NAME','Escolha um nome com letras e números para o endereço Vercel');
  return label;
 }
