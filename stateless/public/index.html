@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+<title>KAIRÓS · Instalar minha célula</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#090f1d;color:#edf4fc}
+*{box-sizing:border-box}body{margin:0;line-height:1.55}.shell{max-width:1000px;margin:auto;padding:28px 18px 60px}
+header{display:flex;align-items:center;gap:12px;border-bottom:1px solid #27364d;padding-bottom:20px;margin-bottom:32px}
+.logo{background:#a9e4ff;color:#092038;font-weight:900;border-radius:12px;padding:8px 17px;font-size:22px}
+small,.sub{color:#a6b8cc}h1{font-size:clamp(29px,5vw,42px);line-height:1.2;letter-spacing:-1px;margin:0 0 12px}
+h2{font-size:20px;margin:0 0 12px}p{margin:0 0 12px}.intro{max-width:740px;margin-bottom:28px;color:#b8cada}
+section{background:#111e32;border:1px solid #2a3e5b;border-radius:18px;margin:18px 0;padding:24px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}label{display:block;font-size:14px;color:#d7e7f7;font-weight:600}
+input,select{display:block;width:100%;margin-top:7px;border:1px solid #45607c;background:#0a1424;color:#fff;border-radius:10px;padding:12px;font:inherit;min-height:46px}
+input:focus,select:focus{outline:2px solid #92d7ff}input::placeholder{color:#6684a3}
+.full{grid-column:1/-1}.guidance{font-size:13px;color:#9db3c7;margin:8px 0}
+a{color:#9de0ff}button{border:0;background:#a9e4ff;color:#092038;border-radius:11px;font-size:15px;font-weight:700;padding:13px 20px;cursor:pointer;min-height:46px}
+button.secondary{color:#dbeeff;background:#2a3d55}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.checkbox{display:flex;gap:11px;align-items:flex-start;line-height:1.5;font-weight:400}.checkbox input{width:18px;height:18px;min-height:18px;margin-top:4px}
+#result{white-space:pre-wrap;border-radius:12px;margin-top:16px;padding:15px;background:#0b1528;border:1px solid #385373;min-height:45px}
+#result:empty{display:none}.steps{display:flex;gap:10px;flex-wrap:wrap}.step{font-size:13px;color:#a9bcd2;border-radius:50px;background:#1b2d44;padding:7px 12px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}section{padding:17px}.shell{padding:16px}}
+</style></head>
+<body><main class="shell">
+<header><div class="logo">K</div><div><strong>KAIRÓS INSTALLER</strong><div class="sub">Homologação independente · sem banco central</div></div></header>
+<h1>Crie sua célula. Nós cuidamos da instalação.</h1>
+<p class="intro">O KAIRÓS será instalado nas suas contas GitHub, Supabase e Vercel. O instalador não cria usuários locais nem guarda tokens, senhas, sessões ou histórico em banco próprio. A instalação continuará no <strong>seu GitHub Actions</strong> quando fechar esta página.</p>
+<div class="steps"><div class="step">1. Conectar contas</div><div class="step">2. Confirmar custo zero</div><div class="step">3. Instalar automaticamente</div></div>
+<form id="wizard" autocomplete="off">
+<section><h2>1. Suas contas de teste</h2>
+<div class="grid"><label>Usuário GitHub<input name="githubLogin" required value="okarakimoto" pattern="[A-Za-z0-9-]+"></label>
+<label>Organização Supabase<input name="supabaseOrgId" required value="naebjiwsisztseydpupg"></label>
+<label>Hospedagem Vercel (escopo pessoal)<input name="vercelScope" required value="personal_x4YO1nK4AxoR8npqTQwx9DNt"></label>
+<label>Região do banco<select name="region"><option value="sa-east-1">Brasil · São Paulo</option><option value="us-east-1">EUA · Leste</option></select></label></div>
+<p class="guidance">As contas acima foram observadas na auditoria inicial; o servidor verificará novamente a propriedade, os planos gratuitos e a conexão GitHub ↔ Vercel.</p></section>
+<section><h2>2. Identificação da célula</h2><div class="grid">
+<label>Nome da célula<input name="cellName" required minlength="3" value="HML Célula Teste"></label>
+<label>Repositório privado<input name="repository" required pattern="kairos-hml-[a-z0-9-]+" value="kairos-hml-celula-teste"></label>
+<label>Login do primeiro administrador<input name="adminLogin" required value="administrador"></label>
+<label>Senha inicial do administrador<input name="adminPassword" type="password" required minlength="20" autocomplete="new-password" placeholder="Crie uma senha forte e guarde-a"></label></div></section>
+<section><h2>3. Autorizar as contas temporariamente</h2>
+<p>Esta versão técnica usa chaves temporárias. Elas são enviadas pelo HTTPS, criptografadas como segredos do GitHub Actions e removidas após a execução, inclusive quando o job falha. <strong>O Installer não as armazena.</strong></p>
+<div class="grid">
+<label>Token GitHub — permissões repo e workflow (incluindo secrets e variables)<a class="guidance" target="_blank" rel="noopener noreferrer" href="https://github.com/settings/tokens">Criar token no GitHub</a><input name="githubToken" type="password" required minlength="20" autocomplete="off"></label>
+<label>Token Supabase — gerenciamento<a class="guidance" target="_blank" rel="noopener noreferrer" href="https://supabase.com/dashboard/account/tokens">Criar token no Supabase</a><input name="supabaseToken" type="password" required minlength="20" autocomplete="off"></label>
+<label class="full">Token Vercel — acesso à conta de teste<a class="guidance" target="_blank" rel="noopener noreferrer" href="https://vercel.com/account/tokens">Criar token na Vercel</a><input name="vercelToken" type="password" required minlength="20" autocomplete="off"></label>
+</div><p class="guidance">Pré-requisito: conectar o GitHub à Vercel, permitindo acesso ao repositório criado automaticamente. Nunca envie tokens por chat.</p></section>
+<section><h2>4. Proteção de custo zero</h2>
+<label class="checkbox"><input type="checkbox" name="approveFreeOnly" required> <span>Quero utilizar exclusivamente planos gratuitos. Se o plano ou quota não puder ser verificado, o KAIRÓS deve bloquear a instalação.</span></label>
+<label class="checkbox"><input type="checkbox" name="personalNonCommercial" required> <span>Confirmo que é um teste pessoal não comercial, adequado ao plano Vercel Hobby.</span></label>
+<p class="guidance">O sistema limita a seleção aos planos Free/Hobby; nenhum software pode prometer que o uso futuro nunca terá custo em serviços externos.</p>
+<div class="actions"><button type="button" class="secondary" id="audit">Verificar planos sem criar recursos</button><button type="submit" id="launch" disabled>Instalar automaticamente</button></div>
+<div id="result" role="status" aria-live="polite"></div>
+</section></form>
+<p class="guidance">Protótipo de engenharia: é necessário validar OAuth, permissões da Vercel, provedor de banco, migrações e segurança do fluxo em homologação antes do uso público.</p>
+</main><script type="module">
+const form=document.getElementById('wizard'),result=document.getElementById('result');
+const auditButton=document.getElementById('audit'),launchButton=document.getElementById('launch');
+let audited=false;
+function values(){const f=new FormData(form),o=Object.fromEntries(f.entries());o.approveFreeOnly=f.has('approveFreeOnly');o.personalNonCommercial=f.has('personalNonCommercial');return o;}
+function feedback(text){result.textContent=text;}
+async function send(endpoint){const response=await fetch(endpoint,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(values())});const data=await response.json();if(!response.ok)throw new Error(data.error||'Erro de conexão');return data;}
+for(const input of form.querySelectorAll('input,select'))input.addEventListener('input',()=>{audited=false;launchButton.disabled=true;});
+auditButton.addEventListener('click',async()=>{
+ if(!form.reportValidity())return;
+ auditButton.disabled=true;feedback('Consultando planos e integração das três contas...');
+ try{const r=await send('/api/preflight');audited=!!r.ok;launchButton.disabled=!audited;
+ feedback('✓ GitHub '+r.github.owner+'\n✓ Supabase Free: '+r.supabase.activeProjectsObserved+' projeto(s) ativo(s)\n✓ Vercel Hobby\n\nA instalação ainda não foi iniciada.');}
+ catch(e){feedback('Instalação bloqueada: '+e.message);}finally{auditButton.disabled=false;}
+});
+form.addEventListener('submit',async event=>{
+ event.preventDefault();if(!audited||!form.reportValidity())return;
+ if(!confirm('Criar um repositório privado na sua conta e iniciar a instalação nos serviços gratuitos?'))return;
+ launchButton.disabled=true;feedback('Iniciando na sua conta GitHub...');
+ try{const r=await send('/api/launch');
+ feedback('Instalação iniciada! Acompanhe em '+r.actionsUrl+'\nO navegador pode ser fechado.\n\nO progresso e os recursos pertencem apenas à sua conta GitHub.');
+ const a=document.createElement('a');a.href=r.actionsUrl;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir acompanhamento no GitHub Actions';result.append('\n',a);
+ for(const x of form.querySelectorAll('input[type=password]'))x.value='';
+ }catch(e){feedback('Instalação não concluída. NÃO repita sem verificar o GitHub: '+e.message);}finally{audited=false;}
+});
+</script></body></html>
