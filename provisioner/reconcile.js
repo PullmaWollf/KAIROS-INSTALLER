@@ -1,5 +1,6 @@
 import {ProvisioningError,TEMPLATE_OWNER} from './plan.js';
 import {providerGet} from './provider-http.js';
+import {vercelScope,vercelQuery} from './vercel-scope.js';
 const safe=(v,re)=>typeof v==='string'&&re.test(v);
 export async function reconcileGithub({fetcher=fetch,token,owner,repository}){
  if(!safe(owner,/^[a-z0-9-]{1,39}$/i)||!safe(repository,/^[a-z0-9._-]{1,100}$/i)||owner.toLowerCase()===TEMPLATE_OWNER.toLowerCase())
@@ -28,18 +29,19 @@ export async function reconcileSupabase({fetcher=fetch,token,organizationId,proj
  return {status:'exists-review',provider:'supabase',projectRef:matches[0].id,reason:'Projeto existente requer confirmação de que pertence à instalação'};
 }
 export async function reconcileVercel({fetcher=fetch,token,teamId,projectName,repository}){
- if(!safe(teamId,/^[a-z0-9_-]{4,64}$/i)||!safe(projectName,/^[a-z0-9-]{3,63}$/)||
+ vercelScope(teamId);
+ if(!safe(projectName,/^[a-z0-9-]{3,63}$/)||
  !safe(repository,/^[a-z0-9-]{1,39}\/[a-z0-9._-]{1,100}$/i)||repository.split('/')[0].toLowerCase()===TEMPLATE_OWNER.toLowerCase())
   throw new ProvisioningError('BAD_TARGET','Destino Vercel inválido');
  let response;
  try{
-  response=await fetcher('https://api.vercel.com/v9/projects/'+projectName+'?teamId='+encodeURIComponent(teamId),
+  response=await fetcher('https://api.vercel.com/v9/projects/'+projectName+vercelQuery(teamId),
    {method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),headers:{Authorization:'Bearer '+token,Accept:'application/json'}});
  }catch{throw new ProvisioningError('RECONCILE_NETWORK','Vercel indisponível; não repetir criação automaticamente');}
  if(response.status===404)return {status:'missing',provider:'vercel'};
  if(response.status!==200)throw new ProvisioningError('RECONCILE_FAILED','Não foi possível inspecionar o projeto Vercel');
  let data;try{data=await response.json();}catch{throw new ProvisioningError('RECONCILE_FAILED','Resposta Vercel inválida');}
- if(data.accountId!==teamId||data.name!==projectName||data.link?.type!=='github'||String(data.link?.repo||'').toLowerCase()!==repository.toLowerCase())
+ if(data.accountId!==vercelScope(teamId).providerAccountId||data.name!==projectName||data.link?.type!=='github'||String(data.link?.repo||'').toLowerCase()!==repository.toLowerCase())
   throw new ProvisioningError('WRONG_OWNER','Projeto Vercel pertence a outro destino ou está ligado a outro GitHub');
  if(!safe(data.id,/^prj_[a-z0-9_-]{4,100}$/i))throw new ProvisioningError('RECONCILE_FAILED','ID Vercel inválido');
  return {status:'exists-review',provider:'vercel',projectId:data.id,reason:'Projeto existente pode ter sido criado por outra instalação'};
