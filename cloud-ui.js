@@ -17,8 +17,13 @@ async function initialize(){
   session=await api('/api/session');
   $('auth-status').textContent=session.signedIn?'Conectado: '+session.user.login:'Entre com GitHub para começar';
   $('logout').hidden=!session.signedIn;
-  $('create-form').querySelector('button[type=submit]').disabled=!session.signedIn;
+
   $('owner').value=session.user?.login||'';
+  $('vercel-team-id').value=session.vercelTeam?.teamId||'';
+  $('vercel-team-display').value=session.vercelTeam?
+   'Equipe: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId):'';
+  $('create-form').querySelector('button[type=submit]').disabled=
+   !session.signedIn||!['github','supabase','vercel'].every(p=>session.providers?.includes(p));
   const list=$('providers');list.replaceChildren();
   for(const provider of ['github','supabase','vercel']){
    const card=el('div',undefined,'provider'),connected=session.providers?.includes(provider);
@@ -223,6 +228,8 @@ $('create-form').addEventListener('submit',async event=>{
  try{
   const out=await api('/api/installations',{method:'POST',body:JSON.stringify(payload)});
   event.currentTarget.reset();$('owner').value=session.user.login;
+  $('vercel-team-id').value=session.vercelTeam?.teamId||'';
+  $('vercel-team-display').value=session.vercelTeam?'Equipe: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId):'';
   notify('Instalação registrada. Nenhum projeto externo foi criado antes da autorização.');
   await loadInstallations();await showDetail(out.installation.id);
   await assisted(out.installation);
