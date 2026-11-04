@@ -31,5 +31,5 @@ export function safeInstallation(row){
   adminLogin:row.admin_login,phaseIndex:index,phase:phaseFor(index),completed:index,
   total:CLOUD_PHASES.length,homologated:false,supabaseRef:row.supabase_ref||null,
   vercelProjectId:row.vercel_project_id||null,pwaOrigin:row.pwa_origin||null,
-  proposedDomain:proposedCellDomain(row.cell_name)};
+  proposedDomain:typeof row.cell_name==='string'&&row.cell_name.trim().length>=3?proposedCellDomain(row.cell_name):null};
 }
