@@ -69,12 +69,13 @@ test('executor refuses mismatched, unconfigured and explicitly disabled scope be
  let called=0;
  const worker={async precheck(){called++;throw Error('must not precheck');},async run(){called++;}};
  const db={async claim(){called++;}};
+ const current={...allowed,KAIROS_HML_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
  const cases=[
   {env:{...env,KAIROS_CONTROL_ENABLE_WRITES:'1'},userId:42,row,code:'HOMOLOGATION_LOCKED'},
-  {env:{...allowed,KAIROS_HML_EXPIRES_AT:'2020-01-01T00:00:00Z'},userId:42,row,code:'HOMOLOGATION_LOCKED'},
-  {env:{...allowed},userId:43,row,code:'HOMOLOGATION_SCOPE_DENIED'},
-  {env:{...allowed},userId:42,row:{...row,repository:'agape'},code:'HOMOLOGATION_SCOPE_DENIED'},
-  {env:{...allowed},userId:42,row:{...row,vercel_team_id:'team_maintainer1234'},code:'HOMOLOGATION_SCOPE_DENIED'}
+  {env:{...current,KAIROS_HML_EXPIRES_AT:'2020-01-01T00:00:00Z'},userId:42,row,code:'HOMOLOGATION_LOCKED'},
+  {env:current,userId:43,row,code:'HOMOLOGATION_SCOPE_DENIED'},
+  {env:current,userId:42,row:{...row,repository:'agape'},code:'HOMOLOGATION_SCOPE_DENIED'},
+  {env:current,userId:42,row:{...row,vercel_team_id:'team_maintainer1234'},code:'HOMOLOGATION_SCOPE_DENIED'}
  ];
  for(const item of cases)
   await assert.rejects(executeCloudStep({db,worker,consent:{
