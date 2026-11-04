@@ -101,3 +101,18 @@ test('personal token cannot impersonate a different personal user',async()=>{
   userId:42,payload:{teamId:'personal_uid_otheruser9999',accessToken:token},env,fetcher}),
   {code:'VERCEL_VERIFICATION_FAILED'});
 });
+
+test('personal hosting wins when token lists an inaccessible team',async()=>{
+ const fetcher=async(url,opts)=>{
+  assert.equal(opts.method,'GET');
+  if(url.includes('/v2/teams?'))return {status:200,json:async()=>({teams:[
+   {id:'team_client123456',name:'Not authorized team',slug:'other'}]})};
+  if(url.includes('teamId=team_client123456'))return {status:403};
+  if(url.endsWith('/v2/user'))return {status:200,json:async()=>identity};
+  if(url.endsWith('/v9/projects?limit=1'))return {status:200,json:async()=>({projects:[]})};
+  throw Error('Unexpected URL');
+ };
+ const result=await discoverVercelTeams({userId:42,payload:{accessToken:token},env,fetcher});
+ assert.equal(result.teams.length,1);
+ assert.equal(result.teams[0].teamId,person);
+});
