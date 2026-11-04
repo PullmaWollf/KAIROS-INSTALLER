@@ -17,19 +17,20 @@
 <h1>Seu KAIRÓS, do início à publicação.</h1><p>Conecte os provedores e acompanhe cada etapa sem compartilhar senhas com o navegador. A versão integrada ainda precisa ser homologada antes de aceitar dados reais.</p></div>
 <div id="alert" role="status" aria-live="polite"></div>
 <section class="surface" id="connections"><h2>1. Conectar contas</h2><div id="providers" class="provider-grid"></div><p class="muted">Conectar uma conta não autoriza criar recursos automaticamente. A Vercel exige permissões específicas de gerenciamento.</p></section>
-<section class="surface" id="new-install"><h2>2. Preparar a célula</h2><p class="muted">Informe apenas identificadores. Senhas e chaves privadas ficam no backend.</p>
+<section class="surface" id="preinstall-audit"><div class="section-header"><h2>2. Verificar conexões antes de instalar</h2><button class="primary" type="button" id="preinstall-check">Verificar sem criar projetos</button></div><p class="muted">Verificaremos os acessos ao GitHub, Supabase e Vercel e ao modelo KAIRÓS Core usando apenas consultas de leitura. Esta validação não cria nada e não garante permissão de criação.</p><div id="preinstall-results" role="status" aria-live="polite"></div></section>
+<section class="surface" id="new-install"><h2>3. Preparar a célula</h2><p class="muted">Informe apenas identificadores. Senhas e chaves privadas ficam no backend.</p>
 <form id="create-form" autocomplete="off">
 <div class="fields">
 <label>Conta GitHub <input id="owner" name="owner" required readonly></label>
 <label>Repositório <input name="repository" required pattern="[a-zA-Z0-9][a-zA-Z0-9-]{2,62}" placeholder="kairos-celula-esperanca"></label>
 <label>Nome da célula <input name="cellName" required minlength="3" maxlength="70" placeholder="Célula Esperança"></label>
-<label>ID da organização Supabase <input name="supabaseOrgId" required placeholder="org_..." autocomplete="off"></label>
+<label>Organização Supabase <input id="supabase-org" name="supabaseOrgId" required placeholder="Selecione sua organização" list="supabase-org-list" autocomplete="off"><datalist id="supabase-org-list"></datalist></label>
 <label>Onde seu site será publicado <input id="vercel-team-display" readonly placeholder="Conecte a sua Vercel acima" autocomplete="off"><input id="vercel-team-id" type="hidden" name="vercelTeamId"></label>
 <label>Região do banco <select name="region" required><option value="sa-east-1">São Paulo</option><option value="us-east-1">Estados Unidos — leste</option><option value="us-west-1">Estados Unidos — oeste</option><option value="eu-west-1">Europa — oeste</option><option value="eu-central-1">Europa — central</option></select></label>
 <label>Login do primeiro ADM <input name="adminLogin" required placeholder="administrador" minlength="3" maxlength="40"></label>
 </div>
 <button class="primary" type="submit">Registrar e iniciar instalação assistida</button></form></section>
-<section class="surface" id="installations"><div class="section-header"><h2>3. Progresso da instalação</h2><button type="button" class="secondary" id="reload">Atualizar</button></div>
+<section class="surface" id="installations"><div class="section-header"><h2>4. Progresso da instalação</h2><button type="button" class="secondary" id="reload">Atualizar</button></div>
 <div id="install-list"></div>
 <div id="detail"></div></section>
 <footer>KAIRÓS Installer · Ambiente de pré-homologação · <a href="./index.html">Instalação guiada</a> · <a href="https://github.com/PullmaWollf/KAIROS-INSTALLER" target="_blank" rel="noopener noreferrer">Código-fonte</a></footer>
