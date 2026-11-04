@@ -101,3 +101,19 @@ test('only real cryptographic scheduler identity can hit the hosted tick endpoin
  assert.equal(JSON.parse(missing.body).error,'WORKER_UNAUTHORIZED');
  assert.equal(calls,1);
 });
+
+test('signed scheduler call is a safe no-op when provision permissions stay disabled',async()=>{
+ const {fetcher}=provider();
+ let claims=0;
+ const handler=createHostedHandler({env:{
+  KAIROS_INSTALLER_PUBLIC_ORIGIN:'https://kairos-installer-homolog.vercel.app',
+  KAIROS_AUTOMATION_ENABLED:'0',KAIROS_CONTROL_ENABLE_WRITES:'0'
+ },fetcher,storeFactory:()=>({async claimAutomation(){claims++;throw Error('blocked');}})});
+ const res={statusCode:200,setHeader(){},end(body=''){this.body=body;}};
+ await handler({url:'/api/automation/tick',method:'GET',
+  headers:{host:'kairos-installer-homolog.vercel.app',
+   authorization:'Bearer '+signed()}},res);
+ assert.equal(res.statusCode,200);
+ assert.deepEqual(JSON.parse(res.body),{status:'disabled'});
+ assert.equal(claims,0);
+});
