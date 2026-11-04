@@ -1,4 +1,5 @@
 import {ControlError} from './crypto.js';
+import {proposedCellDomain} from '../provisioner/cell-domain.js';
 export const CLOUD_PHASES=Object.freeze(['github','supabase','migrate','vercel','env','bootstrap','deploy','smoke']);
 const slug=/^[a-z\d][a-z\d-]{2,62}$/i;
 const id=/^[a-z\d_-]{4,64}$/i;
@@ -13,6 +14,7 @@ export function validateCloudPlan(data,authenticatedLogin){
   throw new ControlError('BAD_PLAN','Destino GitHub/Supabase/Vercel inválido');
  if(!['sa-east-1','us-east-1','us-west-1','eu-west-1','eu-central-1'].includes(data.region))
   throw new ControlError('BAD_REGION','Região não permitida no plano de instalação');
+ proposedCellDomain(data.cellName);
  if(typeof data.adminLogin!=='string'||!/^[a-z0-9._-]{3,40}$/.test(data.adminLogin))throw new ControlError('BAD_ADMIN','Login administrativo inválido');
  return Object.freeze({owner:authenticatedLogin,repository:data.repository.toLowerCase(),cell_name:data.cellName.trim(),supabase_org_id:data.supabaseOrgId,
   vercel_team_id:data.vercelTeamId,region:data.region,admin_login:data.adminLogin});
@@ -28,5 +30,6 @@ export function safeInstallation(row){
   supabaseOrgId:row.supabase_org_id,vercelTeamId:row.vercel_team_id,region:row.region,
   adminLogin:row.admin_login,phaseIndex:index,phase:phaseFor(index),completed:index,
   total:CLOUD_PHASES.length,homologated:false,supabaseRef:row.supabase_ref||null,
-  vercelProjectId:row.vercel_project_id||null,pwaOrigin:row.pwa_origin||null};
+  vercelProjectId:row.vercel_project_id||null,pwaOrigin:row.pwa_origin||null,
+  proposedDomain:proposedCellDomain(row.cell_name)};
 }
