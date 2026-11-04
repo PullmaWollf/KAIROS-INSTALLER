@@ -109,24 +109,23 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     return json(res,200,{connected:!!record,team:publicVercelConnection(record)});
    }
    if(url.pathname==='/api/vercel/diagnostics'&&req.method==='GET'){
-    // Read-only, authenticated, no token or provider response body ever returned.
-    const token=env.KAIROS_VERCEL_ACCESS_TOKEN;
-    const teamId=env.KAIROS_VERCEL_TEAM_ID;
-    if(typeof token!=='string'||token.length<12)
-     return json(res,200,{configured:false,reachable:false,reason:'TOKEN_NOT_CONFIGURED'});
-    if(typeof teamId!=='string'||!/^team_[A-Za-z0-9]+$/.test(teamId))
-     return json(res,200,{configured:true,reachable:false,reason:'TEAM_ID_NOT_CONFIGURED'});
+    // Never diagnose the maintainers global token in a customer session.
+    const account=await readVercelConnection({db,userId:user.id,env});
+    if(!account)return json(res,200,{configured:false,reachable:false,
+     reason:'TOKEN_NOT_CONFIGURED',writesEnabled:false,managementEnabled:false});
     let response;
     try{
-     response=await fetcher('https://api.vercel.com/v9/projects?teamId='+encodeURIComponent(teamId)+'&limit=1',{
+     response=await fetcher('https://api.vercel.com/v9/projects?teamId='+
+      encodeURIComponent(account.teamId)+'&limit=1',{
       method:'GET',redirect:'error',signal:AbortSignal.timeout(10000),
-      headers:{Authorization:'Bearer '+token,Accept:'application/json'}
+      headers:{Authorization:'Bearer '+account.accessToken,Accept:'application/json'}
      });
     }catch{
-     return json(res,200,{configured:true,reachable:false,reason:'NETWORK_UNAVAILABLE'});
+     return json(res,200,{configured:true,reachable:false,teamId:account.teamId,
+      reason:'NETWORK_UNAVAILABLE'});
     }
     const status=response?.status;
-    return json(res,200,{configured:true,reachable:status===200,
+    return json(res,200,{configured:true,reachable:status===200,teamId:account.teamId,
      reason:status===200?'READ_ACCESS_CONFIRMED':
       status===401?'TOKEN_UNAUTHORIZED':status===403?'TEAM_ACCESS_FORBIDDEN':
       status===404?'TEAM_NOT_FOUND':'PROVIDER_UNAVAILABLE',

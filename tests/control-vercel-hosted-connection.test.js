@@ -54,6 +54,14 @@ test('authenticated Vercel connection is stored encrypted and absent from sessio
  assert.deepEqual(data.providers,['github','vercel']);
  assert.equal(data.vercelTeam.teamId,teamId);
  assert.equal(JSON.stringify(data).includes(token),false);
+ const diagnostic=response();
+ await handler(request('/api/vercel/diagnostics'),diagnostic);
+ assert.equal(diagnostic.statusCode,200);
+ const status=JSON.parse(diagnostic.body);
+ assert.equal(status.configured,true);
+ assert.equal(status.reachable,true);
+ assert.equal(status.teamId,teamId);
+ assert.equal(JSON.stringify(status).includes(token),false);
 });
 test('cross-origin Vercel connection is rejected before any secret is persisted',async()=>{
  let writes=0;
