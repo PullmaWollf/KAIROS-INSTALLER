@@ -1,6 +1,7 @@
 import {ControlError} from './crypto.js';
 import {phaseFor,safeInstallation} from './plan.js';
 import {cloudOps} from './cloud-worker.js';
+import {assertHomologationScope} from './homologation-guard.js';
 const safeCode=e=>{
  const code=String(e?.code||'REMOTE_UNCERTAIN');
  return /^[A-Z0-9_]{2,40}$/.test(code)?code:'REMOTE_UNCERTAIN';
@@ -16,6 +17,7 @@ export async function executeCloudStep({db,userId,row,consent,env=process.env,fe
  const phase=phaseFor(Number(row.phase_index));
  if(!phase)return {status:'complete',homologated:false};
  checkedConsent(row,phase,consent);
+ assertHomologationScope({env,userId,row});
  const ops=worker||cloudOps({db,env,fetcher});
  // All prereqs and account access are checked before reserving a remote operation.
  await ops.precheck(row,userId,phase);

@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
-const row={id:'12345678-1234-1234-1234-123456789012',phase_index:0,owner:'cliente',repository:'kairos-cliente',
+const row={id:'12345678-1234-1234-1234-123456789012',phase_index:0,owner:'cliente',repository:'kairos-hml-cliente',
+ cell_name:'HML Célula Cliente',github_id:1,
  supabase_org_id:'org_cliente',vercel_team_id:'team_cliente'};
-const env={KAIROS_CONTROL_ENABLE_WRITES:'1'};
+const env={KAIROS_CONTROL_ENABLE_WRITES:'1',KAIROS_HOMOLOGATION_MODE:'1',
+ KAIROS_HML_GITHUB_ID:'1',KAIROS_HML_GITHUB_LOGIN:'cliente',
+ KAIROS_HML_SUPABASE_ORG_ID:'org_cliente',KAIROS_HML_VERCEL_SCOPE:'team_cliente',
+ KAIROS_HML_REPOSITORY:'kairos-hml-cliente',
+ KAIROS_HML_INSTALLATION_ID:row.id,
+ KAIROS_HML_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
 const consent={execute:true,acceptBilling:true,expectedPhase:'github',owner:'cliente',supabaseOrgId:'org_cliente',vercelTeamId:'team_cliente'};
 test('cloud executor never invokes worker or providers without explicit billing and destination approval',async()=>{
  let called=0;
@@ -16,9 +22,9 @@ test('one atomic claim and finalize per phase, no secret in client status',async
  let claims=0,finishes=0;
  const db={
   async claim(_id,_user,phase){claims++;assert.equal(phase,'github');return {claimed:true,attempt_id:'attempt-1'};},
-  async finish(_id,_user,phase,_attempt,receipt){finishes++;assert.deepEqual(receipt,{repository:'cliente/kairos-cliente'});return true;}
+  async finish(_id,_user,phase,_attempt,receipt){finishes++;assert.deepEqual(receipt,{repository:'cliente/kairos-hml-cliente'});return true;}
  };
- const worker={async precheck(){},async run(){return {receipt:{repository:'cliente/kairos-cliente'}};}};
+ const worker={async precheck(){},async run(){return {receipt:{repository:'cliente/kairos-hml-cliente'}};}};
  const result=await executeCloudStep({db,row,userId:1,consent,worker,env});
  assert.equal(result.status,'recorded');assert.equal(claims,1);assert.equal(finishes,1);
  assert.equal(result.homologated,false);
