@@ -319,12 +319,30 @@ async function showDetail(id){
 }
 async function assisted(i){
  if(autoInstalling)return;
- const approved=window.confirm('Autorizar o KAIRÓS a criar automaticamente a infraestrutura da célula '+i.cellName+
-  '?\n\nGitHub: '+i.owner+'/'+i.repository+
-  '\nSupabase: '+i.supabaseOrgId+'\nVercel: '+i.vercelTeamId+
-  '\nDomínio desejado: '+i.proposedDomain+
-  '\n\nOs provedores podem cobrar. O KAIRÓS continuará no servidor mesmo com o navegador fechado. Autoriza?');
- if(!approved)return;
+ let policy;
+ try{
+  policy=await api('/api/installations/'+i.id+'/automation');
+  if(!policy.enabled){
+   notify('O KAIRÓS ainda não liberou o executor automático. Nenhuma conta será cobrada.');
+   return;
+  }
+  if(policy.zeroCostOnly){
+   const verification=await api('/api/zero-cost-audit?supabaseOrgId='+encodeURIComponent(i.supabaseOrgId));
+   if(!verification.eligible){
+    notify('Custo zero não comprovado no Supabase e Vercel. Instalação bloqueada antes de criar recursos.');
+    return;
+   }
+  }
+ }catch(error){notify('Não foi possível validar custo e permissões: '+error.message);return;}
+ const message='Autorizar o KAIRÓS a instalar automaticamente a célula '+i.cellName+
+  '?\\n\\nGitHub: '+i.owner+'/'+i.repository+
+  '\\nSupabase: '+i.supabaseOrgId+'\\nVercel: '+i.vercelTeamId+
+  '\\nDomínio desejado: '+i.proposedDomain+
+  (policy.zeroCostOnly?
+   '\\n\\nMODO CUSTO ZERO: recursos gratuitos somente, para teste pessoal não comercial. O servidor verificará novamente cada etapa e bloqueará planos pagos ou quotas não comprovadas.':
+   '\\n\\nOs provedores podem cobrar por recursos e uso.')+
+  '\\nA instalação continuará no servidor, mesmo se você fechar o navegador. Autoriza?';
+ if(!window.confirm(message))return;
  autoInstalling=true;
  try{
   const approval={execute:true,acceptBilling:true,expectedPhase:'github',
