@@ -177,7 +177,8 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     const row=await db.installation(user.id,automation[1]);
     if(!row)throw new ControlError('NOT_FOUND');
     const job=await db.automation(user.id,row.id);
-    return json(res,200,{enabled:automationReady(env),automation:job?{
+    return json(res,200,{enabled:automationReady(env),
+     zeroCostOnly:env.KAIROS_ZERO_COST_ONLY==='1',automation:job?{
      state:job.state,updatedAt:job.updated_at,nextRunAt:job.next_run_at,
      expiresAt:job.expires_at,lastError:job.last_error
     }:null});
@@ -187,7 +188,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     const row=await db.installation(user.id,automation[1]);
     if(!row)throw new ControlError('NOT_FOUND');
     const approval=await readJSON(req);
-    const result=await authorizeAutomation({db,userId:user.id,login:user.login,row,approval,env});
+    const result=await authorizeAutomation({db,userId:user.id,login:user.login,row,approval,env,fetcher});
     return json(res,202,result);
    }
    const detail=url.pathname.match(/^\/api\/installations\/([a-f0-9-]{36})$/i);
@@ -231,7 +232,8 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    if(url.pathname==='/api/readiness'&&req.method==='GET'){
     return json(res,200,{ready:await db.health(),oauthConnected:await db.connections(user.id),
      supportedPhases:phaseFor(0)?8:0,remoteProvisioningEnabled:env.KAIROS_CONTROL_ENABLE_WRITES==='1',
-     backgroundAutomationEnabled:automationReady(env),homologated:false});
+     backgroundAutomationEnabled:automationReady(env),
+     zeroCostOnly:env.KAIROS_ZERO_COST_ONLY==='1',homologated:false});
    }
    return json(res,404,{ok:false,error:'NOT_FOUND'});
   }catch(e){
@@ -240,7 +242,8 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    const status=code==='LOGIN_REQUIRED'?401:code==='NOT_FOUND'?404:
     code==='WORKER_UNAUTHORIZED'?401:
     code==='AUTOMATION_ONLY'||code==='PRODUCTION_LOCKED'||code==='PROVISIONING_SCOPE_LOCKED'||
-    code==='PRODUCTION_AUTH_REQUIRED'||code==='AUTOMATION_DISABLED'||code==='HOMOLOGATION_LOCKED'||
+    code==='PRODUCTION_AUTH_REQUIRED'||code==='ZERO_COST_NOT_VERIFIED'||
+    code==='AUTOMATION_DISABLED'||code==='HOMOLOGATION_LOCKED'||
     code==='WRITES_DISABLED'||code==='BETA_SQL_DISABLED'||code==='VERCEL_SCOPE_REQUIRED'?423:
     code==='NOT_CONFIGURED'||code==='STORE_UNAVAILABLE'||code==='STORE_NETWORK'?503:
     code==='INTERNAL_ERROR'?500:400;
