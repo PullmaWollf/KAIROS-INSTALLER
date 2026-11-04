@@ -3,6 +3,7 @@ import {ControlError} from './crypto.js';
 import {phaseFor} from './plan.js';
 import {assertHomologationScope} from './homologation-guard.js';
 import {executeCloudStep,reconcileCloudStep} from './engine.js';
+import {cloudOps} from './cloud-worker.js';
 
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const allowedErrors=/^[A-Z0-9_]{2,40}$/;
@@ -96,6 +97,14 @@ export async function tickAutomation({db,env=process.env,fetcher=fetch,worker}){
      target={state:'paused',error:'MANUAL_REVIEW_REQUIRED',delaySeconds:0};
     }
    }else{
+    // Before the FIRST remote mutation, validate ALL THREE connected destinations.
+    // This is GET-only and prevents leaving a new GitHub repo behind if a
+    // Supabase or Vercel token had already become unusable.
+    if(phase==='github'){
+     const check=worker||cloudOps({db,env,fetcher});
+     for(const provider of ['github','supabase','vercel'])
+      await check.precheck(row,job.userId,provider);
+    }
     const consent={execute:true,acceptBilling:true,expectedPhase:phase,
      owner:job.owner,supabaseOrgId:job.supabaseOrgId,vercelTeamId:job.vercelTeamId};
     const outcome=await executeCloudStep({db,userId:job.userId,row,consent,env,fetcher,worker});
