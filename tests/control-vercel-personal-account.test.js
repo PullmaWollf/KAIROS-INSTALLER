@@ -7,6 +7,7 @@ import {createVercelProject} from '../provisioner/create-projects.js';
 import {checkDeployment} from '../provisioner/deployment.js';
 import {ensureCellDomain} from '../provisioner/cell-domain.js';
 import {reconcileVercel} from '../provisioner/reconcile.js';
+import {configureVercelEnvironment} from '../provisioner/vercel-env.js';
 import {encryptControl} from '../control/crypto.js';
 
 const team='team_client123456',person='personal_uid_customer123456',user='uid_customer123456';
@@ -115,4 +116,30 @@ test('personal hosting wins when token lists an inaccessible team',async()=>{
  const result=await discoverVercelTeams({userId:42,payload:{accessToken:token},env,fetcher});
  assert.equal(result.teams.length,1);
  assert.equal(result.teams[0].teamId,person);
+});
+
+test('personal Vercel environment is written only to verified personal project',async()=>{
+ let writes=0;
+ const fetcher=async(url,opts)=>{
+  assert.equal(url.includes('teamId='),false);
+  assert.equal(opts.headers.Authorization,'Bearer '+token);
+  if(url.endsWith('/v2/user'))return {status:200,json:async()=>identity};
+  if(url.endsWith('/v9/projects?limit=1'))return {status:200,json:async()=>({projects:[]})};
+  if(url.endsWith('/v9/projects/'+project))return {status:200,json:async()=>({
+   id:project,accountId:user,link:{type:'github',repo:'customer/kairos-celula'}})};
+  if(url.endsWith('/v10/projects/'+project+'/env')){
+   if(opts.method==='GET')return {status:200,json:async()=>({envs:[]})};
+   if(opts.method==='POST'){
+    writes++;assert.equal(JSON.parse(opts.body).length,3);
+    return {status:201,json:async()=>({})};
+   }
+  }
+  throw Error('Unexpected provider call '+url);
+ };
+ const response=await configureVercelEnvironment({fetcher,token,approved:true,
+  target:{teamId:person,projectId:project,repoOwner:'customer',repoName:'kairos-celula'},
+  secrets:{SUPABASE_URL:'https://example123456.supabase.co',
+   SUPABASE_SERVICE_ROLE_KEY:'test-service-key-123456789',
+   SESSION_SECRET:'x'.repeat(48)}});
+ assert.equal(response.status,'configured');assert.equal(writes,1);
 });
