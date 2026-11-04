@@ -63,8 +63,9 @@ export async function assertProductionAuthorization({env=process.env,db,userId,r
 export async function assertExecutionScope({env=process.env,db,userId,row,now=Date.now(),homologationGuard}){
  const production=env.KAIROS_PRODUCTION_MODE==='1';
  const homologation=env.KAIROS_HOMOLOGATION_MODE==='1';
- if(production===homologation)throw new ControlError('PROVISIONING_SCOPE_LOCKED');
+ if(production&&homologation)throw new ControlError('PROVISIONING_SCOPE_LOCKED');
  if(production)return assertProductionAuthorization({env,db,userId,row,now});
+ // Preserve the original fail-closed HML error when both modes are disabled.
  if(typeof homologationGuard!=='function')throw new ControlError('PROVISIONING_SCOPE_LOCKED');
  return homologationGuard({env,userId,row,now});
 }
