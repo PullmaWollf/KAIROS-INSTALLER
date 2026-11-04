@@ -21,7 +21,7 @@ test('Vercel personal accounts never generate a teamId query parameter',()=>{
  assert.equal(vercelQuery(person,{limit:1}),'?limit=1');
  assert.equal(vercelQuery(team,{limit:1}),'?teamId='+team+'&limit=1');
  assert.equal(personalAccountId(identity.user),person);
- assert.throws(()=>vercelScope('personal_invalid'),{code:'BAD_TARGET'});
+ assert.throws(()=>vercelScope('personal_a'),{code:'BAD_TARGET'});
 });
 test('personal-only token is discovered without Vercel team membership',async()=>{
  let gets=0;
