@@ -1,81 +1,86 @@
-import {ControlError,encryptControl,decryptControl} from './crypto.js';
+import {ControlError,encryptControl} from './crypto.js';
+import {preflightVercelAccount} from '../provisioner/providers.js';
+import {personalAccountId,vercelQuery} from '../provisioner/vercel-scope.js';
 import {providerGet} from '../provisioner/provider-http.js';
-import {vercelQuery,personalAccountId} from '../provisioner/vercel-scope.js';
-import {TEAM_ID} from './vercel-connection.js';
 
-const pendingPurpose=id=>'oauth:vercel:pending:'+id;
-const connectedPurpose=id=>'oauth:vercel:'+id;
-const TOKEN=/^[A-Za-z0-9._~-]{20,512}$/;
-const personal=/^personal_[A-Za-z0-9_-]{6,54}$/;
+// Vercel's Integration OAuth grants a management-scoped, long-lived API token.
+// This differs from "Sign in with Vercel": identity OIDC alone does NOT grant
+// general project creation permissions.
+const slug=/^[a-z0-9][a-z0-9-]{2,31}$/;
+const tokenPattern=/^[A-Za-z0-9._~-]{20,512}$/;
+const teamPattern=/^team_[A-Za-z0-9_-]{6,64}$/;
+const purpose=id=>'oauth:vercel:'+id;
 
-export async function vercelOAuthScopes({token,env=process.env,fetcher=fetch}){
- const list=await providerGet({fetcher,base:'https://api.vercel.com',
-  path:'/v2/teams?limit=100',token,provider:'Vercel'}).catch(()=>({teams:[]}));
- if(!Array.isArray(list.teams))throw new ControlError('VERCEL_VERIFICATION_FAILED');
- const teams=[];
- for(const t of list.teams.slice(0,12)){
-  if(!TEAM_ID.test(t?.id||'')||t.id===env.KAIROS_VERCEL_TEAM_ID)continue;
-  try{
-   const projects=await providerGet({fetcher,base:'https://api.vercel.com',
-    path:'/v9/projects'+vercelQuery(t.id,{limit:1}),token,provider:'Vercel'});
-   if(Array.isArray(projects?.projects))
-    teams.push({teamId:t.id,name:String(t.name||t.slug||'Equipe Vercel').slice(0,80),
-     slug:String(t.slug||'').slice(0,80)});
-  }catch{/* Limited team scope is not a connection. */}
+export function integrationConfig(env=process.env){
+ const name=env.KAIROS_VERCEL_INTEGRATION_SLUG;
+ const clientId=env.KAIROS_VERCEL_CLIENT_ID;
+ const clientSecret=env.KAIROS_VERCEL_CLIENT_SECRET;
+ if(!slug.test(name||'')||typeof clientId!=='string'||clientId.length<5||
+  typeof clientSecret!=='string'||clientSecret.length<12)
+  throw new ControlError('OAUTH_NOT_CONFIGURED','Configure a integração Vercel no servidor');
+ return {slug:name,clientId,clientSecret};
+}
+
+export function integrationAuthorizationUrl({state,env=process.env}){
+ if(typeof state!=='string'||! /^[A-Za-z0-9_-]{32,100}$/.test(state))
+  throw new ControlError('OAUTH_STATE');
+ const config=integrationConfig(env);
+ const url=new URL('https://vercel.com/integrations/'+config.slug+'/new');
+ url.searchParams.set('state',state);
+ return url.toString();
+}
+
+export async function exchangeVercelIntegration({code,callbackUrl,env=process.env,fetcher=fetch}){
+ if(typeof code!=='string'||!code||code.length>2000)
+  throw new ControlError('OAUTH_FAILED');
+ const config=integrationConfig(env);
+ const form=new URLSearchParams({client_id:config.clientId,client_secret:config.clientSecret,
+  code,redirect_uri:callbackUrl});
+ let response;
+ try{response=await fetcher('https://api.vercel.com/v2/oauth/access_token',{
+  method:'POST',redirect:'error',signal:AbortSignal.timeout(12000),
+  headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},
+  body:form.toString()
+ });}catch{throw new ControlError('OAUTH_NETWORK');}
+ if(response?.status!==200)throw new ControlError('OAUTH_FAILED');
+ let value;try{value=await response.json();}catch{throw new ControlError('OAUTH_FAILED');}
+ if(!tokenPattern.test(value?.access_token||'')||
+  (value.team_id!=null&&!teamPattern.test(value.team_id)))
+  throw new ControlError('OAUTH_FAILED');
+ return {accessToken:value.access_token,teamId:value.team_id||null};
+}
+
+export async function connectVercelIntegration({db,userId,code,callbackUrl,
+ callbackTeamId,env=process.env,fetcher=fetch}){
+ if(!Number.isSafeInteger(userId)||userId<=0)throw new ControlError('LOGIN_REQUIRED');
+ const result=await exchangeVercelIntegration({code,callbackUrl,env,fetcher});
+ let selectedId=result.teamId,verified;
+ // An external-flow teamId is only an untrusted hint. The token's team_id
+ // and read-only provider preflight are authoritative.
+ if(callbackTeamId!=null&&callbackTeamId!==result.teamId)
+  throw new ControlError('VERCEL_TEAM_FORBIDDEN');
+ if(!selectedId){
+  const data=await providerGet({fetcher,base:'https://api.vercel.com',
+   path:'/v2/user',token:result.accessToken,provider:'Vercel'});
+  selectedId=personalAccountId(data?.user);
  }
+ if(selectedId===env.KAIROS_VERCEL_TEAM_ID)
+  throw new ControlError('VERCEL_TEAM_FORBIDDEN','A conta do Installer não é destino');
  try{
-  const identity=await providerGet({fetcher,base:'https://api.vercel.com',
-   path:'/v2/user',token,provider:'Vercel'});
-  const username=identity?.user?.username;
-  if(typeof username!=='string'||!username||
-     username.toLowerCase()==='pullmawollf')throw Error('no-personal');
-  const teamId=personalAccountId(identity.user);
+  verified=await preflightVercelAccount({
+   fetcher,token:result.accessToken,teamId:selectedId
+  });
   const projects=await providerGet({fetcher,base:'https://api.vercel.com',
-   path:'/v9/projects?limit=1',token,provider:'Vercel'});
-  if(Array.isArray(projects?.projects)&&teamId!==env.KAIROS_VERCEL_TEAM_ID)
-   teams.unshift({teamId,name:'Minha conta Vercel',slug:username.slice(0,80)});
- }catch{/* Not all app grants allow personal account access. */}
- return {teams,hasMore:!!list.pagination?.next||list.teams.length>12};
-}
-
-export async function stageVercelOAuth({db,userId,token,env=process.env,fetcher=fetch}){
- if(!Number.isSafeInteger(userId)||userId<=0||!TOKEN.test(token?.accessToken||''))
+   path:'/v9/projects'+vercelQuery(selectedId,{limit:1}),
+   token:result.accessToken,provider:'Vercel'});
+  if(!Array.isArray(projects?.projects))throw Error('no-project-access');
+ }catch{throw new ControlError('VERCEL_VERIFICATION_FAILED');}
+ if(verified?.accessible!==true||verified.teamId!==selectedId)
   throw new ControlError('VERCEL_VERIFICATION_FAILED');
- const found=await vercelOAuthScopes({token:token.accessToken,env,fetcher});
- if(!found.teams.length||found.hasMore)throw new ControlError('VERCEL_SCOPE_REQUIRED');
- const record={kind:'vercel-oauth-pending-v1',...token,issuedAt:Date.now()};
- await db.saveConnection(userId,'vercel-pending',
-  encryptControl(record,pendingPurpose(userId),{env}));
- return found;
-}
-
-export async function pendingVercelOAuth({db,userId,env=process.env,fetcher=fetch}){
- const sealed=await db.connection(userId,'vercel-pending');
- if(!sealed)return {teams:[],hasMore:false};
- let record;
- try{record=decryptControl(sealed,pendingPurpose(userId),{env});}catch{return {teams:[],hasMore:false};}
- if(record?.kind!=='vercel-oauth-pending-v1'||!TOKEN.test(record.accessToken||'')||
-    record.expiresAt<=Date.now()+30000)return {teams:[],hasMore:false};
- return vercelOAuthScopes({token:record.accessToken,env,fetcher});
-}
-
-export async function selectVercelOAuth({db,userId,teamId,env=process.env,fetcher=fetch}){
- if(typeof teamId!=='string'||!(TEAM_ID.test(teamId)||personal.test(teamId))||
-   teamId===env.KAIROS_VERCEL_TEAM_ID)throw new ControlError('VERCEL_TEAM_FORBIDDEN');
- const sealed=await db.connection(userId,'vercel-pending');
- if(!sealed)throw new ControlError('OAUTH_REQUIRED');
- const record=decryptControl(sealed,pendingPurpose(userId),{env});
- if(record?.kind!=='vercel-oauth-pending-v1'||!TOKEN.test(record.accessToken||'')||
-    record.expiresAt<=Date.now()+30000)throw new ControlError('OAUTH_EXPIRED');
- const options=await vercelOAuthScopes({token:record.accessToken,env,fetcher});
- if(options.hasMore)throw new ControlError('VERCEL_SCOPE_REQUIRED');
- const selected=options.teams.find(item=>item.teamId===teamId);
- if(!selected)throw new ControlError('VERCEL_TEAM_FORBIDDEN');
- await db.saveConnection(userId,'vercel',encryptControl({
-  kind:'vercel-management-v1',source:'oauth',teamId,
-  teamSlug:selected.slug,accessToken:record.accessToken,refreshToken:record.refreshToken,
-  expiresAt:record.expiresAt,verifiedAt:new Date().toISOString()
- },connectedPurpose(userId),{env}));
- await db.disconnect(userId,'vercel-pending');
- return {connected:true,teamId,teamSlug:selected.slug};
+ const record={kind:'vercel-management-v1',source:'integration-oauth',
+  teamId:selectedId,teamSlug:String(verified.teamSlug||'').slice(0,100),
+  accessToken:result.accessToken,verifiedAt:new Date().toISOString()};
+ await db.saveConnection(userId,'vercel',
+  encryptControl(record,purpose(userId),{env}));
+ return {connected:true,teamId:selectedId,teamSlug:record.teamSlug};
 }
