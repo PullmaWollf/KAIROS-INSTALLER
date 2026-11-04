@@ -48,7 +48,7 @@ test('production refuses maintainer and cross-customer destinations, including H
   {repository:'KAIROS-INSTALLER'},{repository:'kairos-hml-test123'},
   {repository:'other-project'},{cell_name:'HML Célula'},
   {github_id:99},{supabase_org_id:'?'},{vercel_team_id:env.KAIROS_VERCEL_TEAM_ID},
-  {vercel_team_id:'personal_invalid'}
+  {vercel_team_id:'personal_a'}
  ]){
   assert.throws(()=>validateProductionScope({env,userId:42,
    row:{...row,...values},login:'customer'}),{code:'PRODUCTION_SCOPE_DENIED'});
