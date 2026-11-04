@@ -12,7 +12,7 @@
 </head>
 <body>
 <main class="shell">
-<header class="header"><div class="wordmark"><span class="mark">K</span><span>KAIRÓS <small>INSTALAÇÃO</small></span></div><div id="auth-status" class="state">Conectando...</div></header>
+<header class="header"><div class="wordmark"><span class="mark">K</span><span>KAIRÓS <small>INSTALAÇÃO</small></span></div><div class="toolbar"><div id="auth-status" class="state">Conectando...</div><button type="button" id="logout" class="secondary" hidden>Sair da conta</button></div></header>
 <div class="hero"><span class="eyebrow">SUA CÉLULA · SUA CONTA · SUA INFRAESTRUTURA</span>
 <h1>Seu KAIRÓS, do início à publicação.</h1><p>Conecte os provedores e acompanhe cada etapa sem compartilhar senhas com o navegador. A versão integrada ainda precisa ser homologada antes de aceitar dados reais.</p></div>
 <div id="alert" role="status" aria-live="polite"></div>
@@ -28,7 +28,7 @@
 <label>Região do banco <select name="region" required><option value="sa-east-1">São Paulo</option><option value="us-east-1">Estados Unidos — leste</option><option value="us-west-1">Estados Unidos — oeste</option><option value="eu-west-1">Europa — oeste</option><option value="eu-central-1">Europa — central</option></select></label>
 <label>Login do primeiro ADM <input name="adminLogin" required placeholder="administrador" minlength="3" maxlength="40"></label>
 </div>
-<button class="primary" type="submit">Registrar instalação</button></form></section>
+<button class="primary" type="submit">Registrar e iniciar instalação assistida</button></form></section>
 <section class="surface" id="installations"><div class="section-header"><h2>3. Progresso da instalação</h2><button type="button" class="secondary" id="reload">Atualizar</button></div>
 <div id="install-list"></div>
 <div id="detail"></div></section>

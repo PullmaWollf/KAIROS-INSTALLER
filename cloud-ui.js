@@ -16,6 +16,7 @@ async function initialize(){
  try{
   session=await api('/api/session');
   $('auth-status').textContent=session.signedIn?'Conectado: '+session.user.login:'Entre com GitHub para começar';
+  $('logout').hidden=!session.signedIn;
   $('create-form').querySelector('button[type=submit]').disabled=!session.signedIn;
   $('owner').value=session.user?.login||'';
   const list=$('providers');list.replaceChildren();
@@ -47,7 +48,10 @@ async function initialize(){
      }catch(error){notify(error.message);secret.value='';}
      finally{submit.disabled=false;}
     });
-    card.append(form);
+    const link=el('a','Criar token de acesso na Vercel','link-button secondary');
+    link.href='https://vercel.com/account/tokens';link.target='_blank';
+    link.rel='noopener noreferrer';
+    card.append(form,link);
    }else{
     const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
     link.href='/api/auth/start?provider='+provider;card.append(link);
@@ -174,9 +178,16 @@ $('create-form').addEventListener('submit',async event=>{
  try{
   const out=await api('/api/installations',{method:'POST',body:JSON.stringify(payload)});
   event.currentTarget.reset();$('owner').value=session.user.login;
-  notify('Instalação registrada. Nenhum projeto externo foi criado.');
+  notify('Instalação registrada. Nenhum projeto externo foi criado antes da autorização.');
   await loadInstallations();await showDetail(out.installation.id);
+  await assisted(out.installation);
  }catch(err){notify(err.message);}
+});
+$('logout').addEventListener('click',async()=>{
+ if(autoInstalling){notify('Aguarde a operação em andamento terminar ou interrompa a aba após confirmar o estado.');return;}
+ try{await api('/api/logout',{method:'POST',body:'{}'});
+  session=null;selected=null;await initialize();notify('Sessão encerrada. Entre com a conta GitHub desejada.');
+ }catch(error){notify(error.message);}
 });
 $('reload').addEventListener('click',loadInstallations);
 initialize();
