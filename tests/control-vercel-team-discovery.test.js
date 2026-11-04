@@ -9,19 +9,21 @@ test('team discovery is read-only and returns safe team labels without any token
  let calls=0;
  const fetcher=async(url,init)=>{
   calls++;
-  assert.equal(url,'https://api.vercel.com/v2/teams?limit=100');
   assert.equal(init.method,'GET');
   assert.equal(init.headers.Authorization,'Bearer '+token);
-  return {status:200,json:async()=>({teams:[
+  if(url.includes('/v2/teams?'))return {status:200,json:async()=>({teams:[
    {id:'team_client_123456',name:'Equipe Esperança',slug:'esperanca',secret:'not-public'},
    {id:'team_installer_123456',slug:'operator'},
-   {id:'bad',slug:'bad'}
-  ]})};
+   {id:'bad',slug:'bad'}]})};
+  if(url.includes('teamId=team_client_123456'))return {status:200,json:async()=>({projects:[]})};
+  if(url.endsWith('/v2/user'))return {status:200,json:async()=>({user:{id:'uid_client123456',username:'client'}})};
+  if(url.endsWith('/v9/projects?limit=1'))return {status:403};
+  throw Error('Unexpected provider URL');
  };
  const result=await discoverVercelTeams({...options,fetcher});
  assert.deepEqual(result,{teams:[{teamId:'team_client_123456',
   name:'Equipe Esperança',slug:'esperanca'}],hasMore:false});
- assert.equal(calls,1);
+ assert.equal(calls,4);
  assert.equal(JSON.stringify(result).includes(token),false);
 });
 test('invalid tokens and anonymous calls never reach Vercel',async()=>{
