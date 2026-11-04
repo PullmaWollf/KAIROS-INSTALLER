@@ -1,6 +1,6 @@
 import {ControlError} from './crypto.js';
 import {phaseFor} from './plan.js';
-import {assertHomologationScope} from './homologation-guard.js';
+import {assertHomologationScope,homologationGuardStatus} from './homologation-guard.js';
 import {validateProductionScope,assertExecutionScope} from './production-guard.js';
 import {executeCloudStep,reconcileCloudStep} from './engine.js';
 import {cloudOps} from './cloud-worker.js';
@@ -18,7 +18,8 @@ export function automationReady(env=process.env){
   env.KAIROS_CONTROL_ENABLE_WRITES==='1'&&
   env.KAIROS_VERCEL_MANAGEMENT_ENABLED==='1'&&
   env.KAIROS_ENABLE_BETA_SQL==='1'&&
-  env.KAIROS_ENABLE_GIT_DEPLOY==='1';
+  env.KAIROS_ENABLE_GIT_DEPLOY==='1'&&
+  (env.KAIROS_PRODUCTION_MODE==='1'||homologationGuardStatus(env).readyForWrites);
 }
 function requireLiveAutomation(env){
  if(!automationReady(env))throw new ControlError('AUTOMATION_DISABLED',
