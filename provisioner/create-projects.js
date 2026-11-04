@@ -54,10 +54,10 @@ export async function createSupabaseProject({fetcher=fetch,token,plan,dbPassword
  if(typeof id!=='string'||!/^[a-z0-9]{8,32}$/i.test(id))throw new ProvisioningError('BAD_RESPONSE','Resposta sem identificador válido; confira o projeto no painel antes de repetir');
  return {provider:'supabase',projectRef:id,organizationId:p.organizationId,projectName:p.projectName,status:'created',next:'migrations-pending'};
 }
-export async function createVercelProject({fetcher=fetch,token,plan,approved=false}){
+export async function createVercelProject({fetcher=fetch,token,plan,approved=false,operatorMode=false}){
  if(!approved)throw new ProvisioningError('CONSENT','É necessário autorizar explicitamente a criação e os custos');
  const p=vercelProjectPlan(plan);
- const pre=await preflightVercel({fetcher,token,teamId:p.teamId});
+ const pre=await preflightVercel({fetcher,token,teamId:p.teamId,operatorMode});
  if(!pre.accessible)throw new ProvisioningError('NOT_MEMBER','Time inacessível');
  const created=await postJson({fetcher,token,url:VERCEL_API+'?teamId='+encodeURIComponent(p.teamId),provider:'Vercel',
   body:{name:p.projectName,framework:null,gitRepository:{type:'github',repo:p.repository}}});
