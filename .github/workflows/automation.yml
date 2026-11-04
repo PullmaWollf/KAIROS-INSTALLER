@@ -1,34 +1,36 @@
 name: KAIRÓS — Executor automático isolado
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '3-58/5 * * * *'
   workflow_dispatch:
 permissions:
   contents: read
+  id-token: write
 concurrency:
   group: kairos-installer-automation
   cancel-in-progress: false
 jobs:
   provision:
-    if: github.repository == 'PullmaWollf/KAIROS-INSTALLER'
+    if: github.repository == 'PullmaWollf/KAIROS-INSTALLER' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      CRON_SECRET: ${{ secrets.KAIROS_AUTOMATION_CRON_SECRET }}
       TICK_URL: https://kairos-installer-homolog.vercel.app/api/automation/tick
     steps:
-      - name: Processar etapas persistentes, sem acesso a tokens de clientes
+      - name: Processar etapas persistentes com identidade temporária GitHub
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${CRON_SECRET}" ]]; then
-            echo "Executor nao configurado: nenhum recurso sera criado."
-            exit 0
-          fi
           for iteration in $(seq 1 8); do
+            token="$(curl --fail --silent --show-error --max-time 20 --get \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              --data-urlencode "audience=${TICK_URL}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}" | jq -er '.value')"
+            echo "::add-mask::${token}"
             reply="$(curl --fail-with-body --silent --show-error --max-time 55 \
-              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Authorization: Bearer ${token}" \
               -H 'Accept: application/json' "${TICK_URL}")"
+            unset token
             state="$(printf '%s' "${reply}" | jq -er '.status')"
             case "${state}" in
               queued)
