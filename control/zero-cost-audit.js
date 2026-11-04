@@ -23,7 +23,7 @@ function result(eligible,reason,details={}){return {eligible,reason,...details};
  * Count all projects visible to this account and reject ambiguous results.
  */
 export async function zeroCostAudit({db,userId,organizationId,vercelTeamId,
- env=process.env,fetcher=fetch}){
+ existingProjectRef=null,env=process.env,fetcher=fetch}){
  if(!Number.isSafeInteger(userId)||userId<=0)throw new ControlError('LOGIN_REQUIRED');
  if(!identifier.test(String(organizationId||'')))
   throw new ControlError('BAD_ORG');
@@ -62,8 +62,16 @@ export async function zeroCostAudit({db,userId,organizationId,vercelTeamId,
      const active=projects.filter(p=>!['INACTIVE','PAUSED'].includes(p.status.toUpperCase())).length;
      supabase.activeProjectsObserved=active;
      supabase.observationScope='visible-projects-not-total-account-quota';
-     supabase.eligible=active<2;
-     supabase.reason=active<2?statuses.ready:statuses.full;
+     // After the installer creates its own project, it may legitimately
+     // occupy the second free slot. Never consider another project as ours.
+     const isOurExistingProject=typeof existingProjectRef==='string'&&
+      /^[a-z0-9]{10,30}$/i.test(existingProjectRef)&&projects.some(p=>
+       (p.ref===existingProjectRef||p.id===existingProjectRef)&&
+       (p.organization_id===organizationId||p.organization_slug===match.slug)&&
+       !['INACTIVE','PAUSED'].includes(String(p.status||'').toUpperCase()));
+     supabase.eligible=active<2||active<=2&&isOurExistingProject;
+     supabase.reason=supabase.eligible?
+      isOurExistingProject?'EXISTING_FREE_PROJECT':statuses.ready:statuses.full;
     }
    }
   }catch{supabase.reason=statuses.provider;}
