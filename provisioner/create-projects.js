@@ -1,5 +1,6 @@
 import {ProvisioningError,TEMPLATE_OWNER} from './plan.js';
-import {preflightSupabase,preflightVercel} from './providers.js';
+import {preflightSupabase,preflightVercelAccount} from './providers.js';
+import {vercelScope,vercelQuery} from './vercel-scope.js';
 
 const SUPABASE_API='https://api.supabase.com/v1/projects';
 const VERCEL_API='https://api.vercel.com/v11/projects';
@@ -19,7 +20,7 @@ export function supabaseProjectPlan({organizationId,projectName,region}){
  return Object.freeze({provider:'supabase',organizationId,projectName:name,region,createsResources:true,mayIncurCharges:true});
 }
 export function vercelProjectPlan({teamId,projectName,repoOwner,repoName}){
- if(!idPattern.test(value(teamId)))throw new ProvisioningError('BAD_TEAM','Time Vercel inválido');
+ vercelScope(teamId);
  if(!projectPattern.test(value(projectName)))throw new ProvisioningError('BAD_PROJECT','Nome do projeto inválido');
  if(!/^[a-z\d][a-z\d-]{0,38}$/i.test(value(repoOwner)))throw new ProvisioningError('BAD_OWNER','Proprietário GitHub inválido');
  notMaintainer(repoOwner,'GitHub');
@@ -57,12 +58,12 @@ export async function createSupabaseProject({fetcher=fetch,token,plan,dbPassword
 export async function createVercelProject({fetcher=fetch,token,plan,approved=false,operatorMode=false}){
  if(!approved)throw new ProvisioningError('CONSENT','É necessário autorizar explicitamente a criação e os custos');
  const p=vercelProjectPlan(plan);
- const pre=await preflightVercel({fetcher,token,teamId:p.teamId,operatorMode});
+ const pre=await preflightVercelAccount({fetcher,token,teamId:p.teamId,operatorMode});
  if(!pre.accessible)throw new ProvisioningError('NOT_MEMBER','Time inacessível');
- const created=await postJson({fetcher,token,url:VERCEL_API+'?teamId='+encodeURIComponent(p.teamId),provider:'Vercel',
+ const created=await postJson({fetcher,token,url:VERCEL_API+vercelQuery(p.teamId),provider:'Vercel',
   body:{name:p.projectName,framework:null,gitRepository:{type:'github',repo:p.repository}}});
  const id=created?.id,accountId=created?.accountId;
- if(typeof id!=='string'||!/^prj_[a-z0-9_-]+$/i.test(id)||accountId!==p.teamId)
+ if(typeof id!=='string'||!/^prj_[a-z0-9_-]+$/i.test(id)||accountId!==vercelScope(p.teamId).providerAccountId)
   throw new ProvisioningError('BAD_RESPONSE','A Vercel não confirmou o destino solicitado; confira o painel antes de repetir');
  return {provider:'vercel',projectId:id,teamId:p.teamId,repository:p.repository,status:'created',next:'environment-and-deploy-pending'};
 }
