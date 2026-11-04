@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {executeCloudStep} from '../control/engine.js';
 import {phaseFor} from '../control/plan.js';
 const initial={id:'12345678-aaaa-bbbb-cccc-123456789012',phase_index:0,owner:'cliente',
- repository:'kairos-celula',supabase_org_id:'org_cliente',vercel_team_id:'team_cliente',
+ repository:'kairos-hml-celula',cell_name:'HML Célula',github_id:127,supabase_org_id:'org_cliente',vercel_team_id:'team_cliente',
  supabase_ref:null,vercel_project_id:null,pwa_origin:null};
 test('cloud orchestration advances eight phases under exact consent, never reusing another tenant',async()=>{
  const row={...initial},attempts=new Map(),audit=[];
@@ -29,7 +29,7 @@ test('cloud orchestration advances eight phases under exact consent, never reusi
    if(['migrate','env','bootstrap'].includes(phase))assert.ok(current.supabase_ref);
    if(['env','deploy'].includes(phase))assert.ok(current.vercel_project_id);},
   async run(current,who,phase){
-   const receipts={github:{repository:'cliente/kairos-celula'},supabase:{projectRef:'abcdefghijklmnopqrst'},
+   const receipts={github:{repository:'cliente/kairos-hml-celula'},supabase:{projectRef:'abcdefghijklmnopqrst'},
     migrate:{},vercel:{projectId:'prj_abcdefghijklmno'},env:{},bootstrap:{},
     deploy:{url:'https://celula-testes.vercel.app'},smoke:{}};
    return {receipt:receipts[phase]};
@@ -38,7 +38,12 @@ test('cloud orchestration advances eight phases under exact consent, never reusi
  for(let index=0;index<8;index++){
   const phase=phaseFor(index);
   const res=await executeCloudStep({db,userId:127,row:{...row},worker,
-   env:{KAIROS_CONTROL_ENABLE_WRITES:'1'},
+   env:{KAIROS_CONTROL_ENABLE_WRITES:'1',KAIROS_HOMOLOGATION_MODE:'1',
+    KAIROS_HML_GITHUB_ID:'127',KAIROS_HML_GITHUB_LOGIN:'cliente',
+    KAIROS_HML_SUPABASE_ORG_ID:'org_cliente',KAIROS_HML_VERCEL_SCOPE:'team_cliente',
+    KAIROS_HML_REPOSITORY:'kairos-hml-celula',
+    KAIROS_HML_INSTALLATION_ID:row.id,
+    KAIROS_HML_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()},
    consent:{execute:true,acceptBilling:true,owner:'cliente',supabaseOrgId:'org_cliente',
     vercelTeamId:'team_cliente',expectedPhase:phase}});
   assert.equal(res.status,'recorded');assert.equal(res.phase,phase);
