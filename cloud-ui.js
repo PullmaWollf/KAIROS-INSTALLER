@@ -21,7 +21,7 @@ async function initialize(){
   $('owner').value=session.user?.login||'';
   $('vercel-team-id').value=session.vercelTeam?.teamId||'';
   $('vercel-team-display').value=session.vercelTeam?
-   'Equipe: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId):'';
+   'Hospedagem: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId):'';
   $('create-form').querySelector('button[type=submit]').disabled=
    !session.signedIn||!['github','supabase','vercel'].every(p=>session.providers?.includes(p));
   const list=$('providers');list.replaceChildren();
@@ -30,18 +30,18 @@ async function initialize(){
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
    if(provider==='vercel'){
-    if(session.vercelTeam)card.append(el('small','Equipe conectada: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId),'state-label'));
+    if(session.vercelTeam)card.append(el('small','Hospedagem conectada: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId),'state-label'));
     const guide=el('div',undefined,'vercel-guide');
     guide.append(el('p','A hospedagem é sua: use a sua conta Vercel. Não precisa informar códigos técnicos.','state-label'));
-    const instructions=el('p','1. Abra a Vercel e crie um token com acesso à equipe onde deseja hospedar.','state-label');
+    const instructions=el('p','1. Abra sua Vercel e crie uma chave de acesso para sua conta.','state-label');
     const tokenLink=el('a','Abrir Vercel e criar token','link-button secondary');
     tokenLink.href='https://vercel.com/account/tokens';
     tokenLink.target='_blank';tokenLink.rel='noopener noreferrer';
-    guide.append(instructions,tokenLink,el('p','2. Copie o token e cole abaixo. O KAIRÓS identifica sua equipe automaticamente.','state-label'));
+    guide.append(instructions,tokenLink,el('p','2. Copie a chave e cole abaixo. O KAIRÓS identifica sua hospedagem automaticamente.','state-label'));
     card.append(guide);
     const form=document.createElement('form');form.className='vercel-connect-form';
     form.autocomplete='off';
-    const tokenLabel=el('label','Token de acesso da Vercel');
+    const tokenLabel=el('label','Chave de acesso da Vercel');
     const secret=document.createElement('input');secret.type='password';
     secret.name='accessToken';secret.required=true;secret.minLength=20;secret.maxLength=512;
     secret.autocomplete='new-password';secret.placeholder='Cole o token aqui';
@@ -66,25 +66,25 @@ async function initialize(){
         body:JSON.stringify({accessToken})});
        options=found.teams;
        if(!Array.isArray(options)||!options.length){
-        options=null;status.textContent='Nenhuma equipe encontrada. Verifique se o token tem acesso a uma equipe Vercel. Tokens somente pessoais ainda não são aceitos nesta versão.';
+        options=null;status.textContent='Não foi possível identificar sua hospedagem. Confira se criou a chave na conta correta.';
         secret.value='';return;
        }
-       if(found.hasMore){options=null;status.textContent='Sua conta tem muitas equipes. Entre em contato com o suporte para selecionar a equipe correta.';secret.value='';return;}
+       if(found.hasMore){options=null;status.textContent='Encontramos muitos espaços de hospedagem. Fale com o suporte para conectar o correto.';secret.value='';return;}
        if(options.length>1){
-        choice=el('select');choice.setAttribute('aria-label','Escolha a equipe Vercel');
+        choice=el('select');choice.setAttribute('aria-label','Escolha onde publicar');
         for(const item of options){
          const option=el('option',item.name+(item.slug?' ('+item.slug+')':''));
          option.value=item.teamId;choice.append(option);
         }
         form.insertBefore(choice,submit);
-        submit.textContent='Conectar equipe escolhida';
-        status.textContent='3. Escolha sua equipe e clique novamente para concluir.';
+        submit.textContent='Conectar hospedagem selecionada';
+        status.textContent='3. Escolha onde deseja publicar e confirme a conexão.';
         return;
        }
       }
       const teamId=choice?choice.value:options[0].teamId;
-      if(!options.some(item=>item.teamId===teamId))throw Error('Equipe inválida');
-      status.textContent='Verificando acesso à equipe…';
+      if(!options.some(item=>item.teamId===teamId))throw Error('Hospedagem inválida');
+      status.textContent='Verificando acesso à sua hospedagem…';
       await api('/api/connections/vercel',{method:'POST',
        body:JSON.stringify({teamId,accessToken})});
       secret.value='';notify('Sua Vercel foi conectada com segurança.');

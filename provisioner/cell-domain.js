@@ -1,4 +1,5 @@
 import {ControlError} from '../control/crypto.js';
+import {vercelScope,vercelQuery} from './vercel-scope.js';
 
 /** Vercel generates its default .vercel.app hostname from the project name.
  * User-friendly names must be normalized before any provisioning POST.
@@ -19,10 +20,9 @@ export function proposedCellDomain(cellName){
 }
 
 const projectIdPattern=/^prj_[a-z0-9_-]{4,100}$/i;
-const teamIdPattern=/^team_[a-z0-9_-]{6,64}$/i;
 function checked({token,teamId,projectId,cellName}){
- if(typeof token!=='string'||!token||!teamIdPattern.test(teamId||'')||
-  !projectIdPattern.test(projectId||''))throw new ControlError('BAD_TARGET');
+ if(typeof token!=='string'||!token||!projectIdPattern.test(projectId||''))throw new ControlError('BAD_TARGET');
+ try{vercelScope(teamId);}catch{throw new ControlError('BAD_TARGET');}
  return {teamId,projectId,domain:proposedCellDomain(cellName)};
 }
 async function getJson(fetcher,url,token){
@@ -36,9 +36,9 @@ async function getJson(fetcher,url,token){
 export async function verifiedCellDomain({fetcher=fetch,token,teamId,projectId,cellName}){
  const target=checked({token,teamId,projectId,cellName});
  const base='https://api.vercel.com';
- const scope='?teamId='+encodeURIComponent(teamId);
+ const scope=vercelQuery(teamId);
  const project=await getJson(fetcher,base+'/v9/projects/'+encodeURIComponent(projectId)+scope,token);
- if(project?.id!==projectId||project.accountId!==teamId)throw new ControlError('WRONG_PROJECT');
+ if(project?.id!==projectId||project.accountId!==vercelScope(teamId).providerAccountId)throw new ControlError('WRONG_PROJECT');
  const list=await getJson(fetcher,base+'/v9/projects/'+encodeURIComponent(projectId)+'/domains'+scope,token);
  if(!Array.isArray(list?.domains))throw new ControlError('DOMAIN_BAD_RESPONSE');
  const linked=list.domains.find(d=>d?.name===target.domain&&
@@ -52,7 +52,7 @@ export async function ensureCellDomain({fetcher=fetch,token,teamId,projectId,cel
  let response;
  try{
   response=await fetcher('https://api.vercel.com/v10/projects/'+encodeURIComponent(projectId)+
-   '/domains?teamId='+encodeURIComponent(teamId),{
+   '/domains'+vercelQuery(teamId),{
    method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),
    headers:{Authorization:'Bearer '+token,Accept:'application/json','Content-Type':'application/json'},
    body:JSON.stringify({name:target.domain})

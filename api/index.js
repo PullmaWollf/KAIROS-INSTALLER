@@ -6,6 +6,7 @@ import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAut
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
+import {vercelQuery} from '../provisioner/vercel-scope.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
 function errCode(e){return e instanceof ControlError?e.code:'INTERNAL_ERROR';}
@@ -120,8 +121,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
      reason:'TOKEN_NOT_CONFIGURED',writesEnabled:false,managementEnabled:false});
     let response;
     try{
-     response=await fetcher('https://api.vercel.com/v9/projects?teamId='+
-      encodeURIComponent(account.teamId)+'&limit=1',{
+     response=await fetcher('https://api.vercel.com/v9/projects'+vercelQuery(account.teamId,{limit:1}),{
       method:'GET',redirect:'error',signal:AbortSignal.timeout(10000),
       headers:{Authorization:'Bearer '+account.accessToken,Accept:'application/json'}
      });

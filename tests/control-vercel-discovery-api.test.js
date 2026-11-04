@@ -21,7 +21,10 @@ test('signed-in team discovery is read-only, origin protected and redacted',asyn
   async saveConnection(){writes++;}};
  const fetcher=async(url,init)=>{
   assert.equal(init.method,'GET');
-  return {status:200,json:async()=>({teams:[{id:'team_customer_123456',slug:'client'}]})};
+  if(url.includes('/v2/teams?'))return {status:200,json:async()=>({teams:[{id:'team_customer_123456',slug:'client'}]})};
+  if(url.includes('teamId=team_customer_123456'))return {status:200,json:async()=>({projects:[]})};
+  if(url.endsWith('/v2/user'))return {status:200,json:async()=>({user:{id:'uid_customer123456',username:'client'}})};
+  return {status:403};
  };
  const handler=createHostedHandler({env,fetcher,storeFactory:()=>store});
  const result=resp();await handler(req(),result);

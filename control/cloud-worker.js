@@ -6,7 +6,8 @@ import {phaseFor} from './plan.js';
 import {readVercelConnection} from './vercel-connection.js';
 import {preflightGithub,createGithubFromTemplate} from '../provisioner/github.js';
 import {createSupabaseProject,createVercelProject} from '../provisioner/create-projects.js';
-import {preflightSupabase,preflightVercel} from '../provisioner/providers.js';
+import {preflightSupabase,preflightVercelAccount} from '../provisioner/providers.js';
+import {vercelScope,vercelQuery} from '../provisioner/vercel-scope.js';
 import {configureVercelEnvironment} from '../provisioner/vercel-env.js';
 import {checkDeployment} from '../provisioner/deployment.js';
 import {projectSlugForCell,ensureCellDomain,verifiedCellDomain} from '../provisioner/cell-domain.js';
@@ -96,7 +97,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    await preflightSupabase({fetcher,token:await token(ownerId,'supabase'),organizationId:row.supabase_org_id});
   if(['vercel','env','deploy','smoke'].includes(phase)){
    if(env.KAIROS_VERCEL_MANAGEMENT_ENABLED!=='1')throw new ControlError('VERCEL_SCOPE_REQUIRED','Permissões de gerenciamento da Vercel ainda não habilitadas');
-   await preflightVercel({fetcher,token:await vercelToken(row.vercel_team_id,ownerId),teamId:row.vercel_team_id});
+   await preflightVercelAccount({fetcher,token:await vercelToken(row.vercel_team_id,ownerId),teamId:row.vercel_team_id});
   }
   if(phase==='migrate'&&env.KAIROS_ENABLE_BETA_SQL!=='1')
    throw new ControlError('BETA_SQL_DISABLED','Endpoint de migrações Supabase beta não autorizado');
@@ -177,18 +178,17 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
    if(env.KAIROS_ENABLE_GIT_DEPLOY!=='1')
     return {waiting:true,reason:'DEPLOY_NOT_TRIGGERED'};
    const info=await fetcher('https://api.vercel.com/v9/projects/'+encodeURIComponent(row.vercel_project_id)+
-    '?teamId='+encodeURIComponent(row.vercel_team_id),{
+    vercelQuery(row.vercel_team_id),{
     method:'GET',redirect:'error',signal:AbortSignal.timeout(10000),headers:{Authorization:'Bearer '+vToken,Accept:'application/json'}});
    if(info?.status!==200)throw new ControlError('VERCEL_PROJECT_UNAVAILABLE');
    const details=await info.json();
-   if(details.id!==row.vercel_project_id||details.accountId!==row.vercel_team_id||details.link?.type!=='github'||
+   if(details.id!==row.vercel_project_id||details.accountId!==vercelScope(row.vercel_team_id).providerAccountId||details.link?.type!=='github'||
     String(details.link.repo||'').toLowerCase()!==(row.owner+'/'+row.repository).toLowerCase())
     throw new ControlError('WRONG_PROJECT','Deploy recusado: vínculo GitHub inesperado');
    const repoId=Number(details.link.repoId);
    if(!Number.isSafeInteger(repoId)||repoId<=0)throw new ControlError('GITHUB_REPO_ID_MISSING');
    let response;
-   try{response=await fetcher('https://api.vercel.com/v13/deployments?teamId='+
-     encodeURIComponent(row.vercel_team_id)+'&forceNew=1',{
+   try{response=await fetcher('https://api.vercel.com/v13/deployments'+vercelQuery(row.vercel_team_id,{forceNew:1}),{
      method:'POST',redirect:'error',signal:AbortSignal.timeout(20000),
      headers:{Authorization:'Bearer '+vToken,Accept:'application/json','Content-Type':'application/json'},
      body:JSON.stringify({name:row.repository,project:row.vercel_project_id,target:'production',

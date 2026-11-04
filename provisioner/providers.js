@@ -1,5 +1,6 @@
 import {ProvisioningError,TEMPLATE_OWNER} from './plan.js';
 import {providerGet} from './provider-http.js';
+import {vercelScope,personalAccountId} from './vercel-scope.js';
 const ref=/^[a-z0-9_-]{4,64}$/i;
 function required(value,label){if(!ref.test(String(value||'')))throw new ProvisioningError('BAD_TARGET',label+' inválido');return String(value);}
 function otherAccount(value,label){
@@ -31,6 +32,21 @@ export async function preflightVercel({fetcher=fetch,token,teamId,operatorMode=f
  if(!team)throw new ProvisioningError('NOT_MEMBER','Vercel: time não acessível pelo administrador');
  otherAccount(team.slug,'Time Vercel');
  return Object.freeze({provider:'vercel',user:login,teamId:id,teamSlug:team.slug,accessible:true,ownership:'not-verified',createsResources:false});
+}
+export async function preflightVercelAccount({fetcher=fetch,token,teamId,operatorMode=false}){
+ const scope=vercelScope(teamId);
+ if(scope.kind==='team')return preflightVercel({fetcher,token,teamId,operatorMode});
+ const result=await providerGet({fetcher,base:'https://api.vercel.com',path:'/v2/user',token,provider:'Vercel'});
+ const username=result?.user?.username;
+ if(typeof username!=='string'||!username)throw new ProvisioningError('BAD_RESPONSE');
+ if(!operatorMode)otherAccount(username,'Conta Vercel');
+ if(personalAccountId(result.user)!==teamId)
+  throw new ProvisioningError('WRONG_OWNER','Credencial não pertence à conta Vercel informada');
+ const projects=await providerGet({fetcher,base:'https://api.vercel.com',
+  path:'/v9/projects?limit=1',token,provider:'Vercel'});
+ if(!Array.isArray(projects?.projects))throw new ProvisioningError('BAD_RESPONSE');
+ return Object.freeze({provider:'vercel',user:username,teamId,teamSlug:username,
+  accessible:true,ownership:'identity-verified',createsResources:false});
 }
 export function targetsFromEnv(env=process.env){
  const organizationId=env.KAIROS_SUPABASE_ORG_ID;

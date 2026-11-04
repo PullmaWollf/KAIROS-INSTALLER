@@ -1,5 +1,6 @@
 import {ControlError,encryptControl,decryptControl} from './crypto.js';
-import {preflightVercel} from '../provisioner/providers.js';
+import {preflightVercelAccount} from '../provisioner/providers.js';
+import {vercelScope,vercelQuery,personalAccountId} from '../provisioner/vercel-scope.js';
 import {providerGet} from '../provisioner/provider-http.js';
 
 export const TEAM_ID=/^team_[A-Za-z0-9_-]{6,64}$/;
@@ -12,7 +13,8 @@ export function validateVercelInput(value,env=process.env){
     Object.keys(value).sort().join(',')!=='accessToken,teamId')
   throw new ControlError('BAD_VERCEL_CREDENTIAL','Informe somente ID do time e token');
  const {teamId,accessToken}=value;
- if(typeof teamId!=='string'||!TEAM_ID.test(teamId)||
+ try{vercelScope(teamId);}catch{throw new ControlError('BAD_VERCEL_CREDENTIAL');}
+ if(typeof teamId!=='string'||
     typeof accessToken!=='string'||!TOKEN.test(accessToken))
   throw new ControlError('BAD_VERCEL_CREDENTIAL','Credencial ou ID inválido');
  if(teamId===env.KAIROS_VERCEL_TEAM_ID)
@@ -27,17 +29,40 @@ export async function discoverVercelTeams({userId,payload,env=process.env,fetche
     Object.keys(payload).join(',')!=='accessToken'||typeof payload.accessToken!=='string'||
     !TOKEN.test(payload.accessToken))
   throw new ControlError('BAD_VERCEL_CREDENTIAL');
- let result;
+ let listing;
+ try{listing=await providerGet({fetcher,base:'https://api.vercel.com',
+  path:'/v2/teams?limit=100',token:payload.accessToken,provider:'Vercel'});}
+ catch{listing={teams:[]};}
+ if(!Array.isArray(listing?.teams))throw new ControlError('VERCEL_VERIFICATION_FAILED');
+ // Token scope may be narrower than team membership. Probe each candidate read-only.
+ const visible=listing.teams.filter(t=>t&&TEAM_ID.test(t.id||'')&&
+  t.id!==env.KAIROS_VERCEL_TEAM_ID);
+ const checked=await Promise.all(visible.slice(0,12).map(async t=>{
+  try{
+   const projects=await providerGet({fetcher,base:'https://api.vercel.com',
+    path:'/v9/projects'+vercelQuery(t.id,{limit:1}),token:payload.accessToken,provider:'Vercel'});
+   if(!Array.isArray(projects?.projects))return null;
+   return {teamId:t.id,name:String(t.name||t.slug||'Minha hospedagem').slice(0,80),
+    slug:String(t.slug||'').slice(0,80)};
+  }catch{return null;}
+ }));
+ const teams=checked.filter(Boolean);
+ // Account discovery stays independent from the team list: Vercel tokens can
+ // authorize the personal account even when the user belongs to other teams.
  try{
-  result=await providerGet({fetcher,base:'https://api.vercel.com',
-   path:'/v2/teams?limit=100',token:payload.accessToken,provider:'Vercel'});
- }catch{throw new ControlError('VERCEL_VERIFICATION_FAILED','Token inválido ou sem acesso à Vercel');}
- if(!Array.isArray(result?.teams))throw new ControlError('VERCEL_VERIFICATION_FAILED');
- const teams=result.teams.filter(t=>t&&TEAM_ID.test(t.id||'')&&
-  t.id!==env.KAIROS_VERCEL_TEAM_ID)
-  .map(t=>({teamId:t.id,name:String(t.name||t.slug||'Equipe').slice(0,80),
-   slug:String(t.slug||'').slice(0,80)}));
- return {teams,hasMore:!!result.pagination?.next};
+  const identity=await providerGet({fetcher,base:'https://api.vercel.com',
+   path:'/v2/user',token:payload.accessToken,provider:'Vercel'});
+  const username=String(identity?.user?.username||'');
+  if(!username||username.toLowerCase()==='pullmawollf')throw Error('unauthorized');
+  const accountId=personalAccountId(identity.user);
+  const projects=await providerGet({fetcher,base:'https://api.vercel.com',
+   path:'/v9/projects?limit=1',token:payload.accessToken,provider:'Vercel'});
+  if(!Array.isArray(projects?.projects))throw Error('no-access');
+  teams.unshift({teamId:accountId,name:'Minha conta Vercel',slug:username.slice(0,80)});
+ }catch{/* Team-only access is valid; do not misreport it as an error. */}
+ if(!teams.length)throw new ControlError('VERCEL_VERIFICATION_FAILED',
+  'A chave informada não autorizou acesso a uma hospedagem Vercel');
+ return {teams,hasMore:!!listing.pagination?.next||visible.length>12};
 }
 /** Never return provider tokens or raw provider bodies to the client. */
 export async function connectVercel({db,userId,payload,env=process.env,fetcher=fetch}){
@@ -45,14 +70,14 @@ export async function connectVercel({db,userId,payload,env=process.env,fetcher=f
  const {teamId,accessToken}=validateVercelInput(payload,env);
  let verified;
  try{
-  verified=await preflightVercel({fetcher,token:accessToken,teamId});
+  verified=await preflightVercelAccount({fetcher,token:accessToken,teamId});
   const projects=await providerGet({fetcher,base:'https://api.vercel.com',
-   path:'/v9/projects?teamId='+encodeURIComponent(teamId)+'&limit=1',
+   path:'/v9/projects'+vercelQuery(teamId,{limit:1}),
    token:accessToken,provider:'Vercel'});
   if(!Array.isArray(projects?.projects))throw new Error('invalid-project-list');
  }catch{
   throw new ControlError('VERCEL_VERIFICATION_FAILED',
-   'Não foi possível comprovar acesso à equipe com o token informado');
+   'Não foi possível comprovar acesso à hospedagem informada');
  }
  if(!verified?.accessible||verified.teamId!==teamId)
   throw new ControlError('VERCEL_VERIFICATION_FAILED');
@@ -66,7 +91,7 @@ export async function readVercelConnection({db,userId,env=process.env}){
  const envelope=await db.connection(userId,'vercel');
  if(!envelope)return null;
  const record=decryptControl(envelope,purpose(userId),{env});
- if(record?.kind!==KIND||!TEAM_ID.test(record.teamId||'')||
+ if(record?.kind!==KIND||!(TEAM_ID.test(record.teamId||'')||/^personal_[A-Za-z0-9_-]{6,54}$/.test(record.teamId||''))||
     typeof record.accessToken!=='string'||!TOKEN.test(record.accessToken)||
     record.teamId===env.KAIROS_VERCEL_TEAM_ID)return null;
  return record;
