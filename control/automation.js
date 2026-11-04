@@ -109,7 +109,14 @@ export async function tickAutomation({db,env=process.env,fetcher=fetch,worker}){
        outcome.reason:'MANUAL_REVIEW_REQUIRED',delaySeconds:0};
    }
   }
- }catch(error){target={state:'paused',error:safeCode(error),delaySeconds:0};}
+ }catch(error){
+  // These failures happen before any provider mutation or require a fresh
+  // ownership/health read. Never retry a remote POST or an uncertain claim.
+  const code=safeCode(error);
+  target=code==='PROJECT_NOT_READY'?
+   {state:'waiting',error:null,delaySeconds:90}:
+   {state:'paused',error:code,delaySeconds:0};
+ }
  // Only the holder of the current lease may settle this job.
  const saved=await db.settleAutomation({installationId:job.installationId,claimId:job.claimId,
   ...target});
