@@ -26,7 +26,10 @@ function server(options={}){
    if(path==='/v1/organizations/'+plan.supabaseOrgId)return respond({id:plan.supabaseOrgId,plan:options.supabasePlan||'free'});
    if(path==='/v1/projects')return respond(options.projects||[]);
    if(path==='/v2/user')return respond({user:{username:'okarakimoto',id:'x4YO1nK4AxoR8npqTQwx9DNt',billing:{plan:options.vercelPlan||'hobby'}}});
-   if(path==='/v1/integrations/git-namespaces?provider=github')return respond(options.noGitLink?[]:[{name:'okarakimoto'}]);
+   if(path==='/v1/integrations/git-namespaces?provider=github')return respond(
+    options.noGitLink?[]:options.restrictedLink?
+     [{provider:'github',slug:'okarakimoto',isAccessRestricted:true}]:
+     [{provider:'github',slug:'okarakimoto',isAccessRestricted:false,viewer:{canCreateApp:true}}]);
    if(path===ghRepo)return respond(null,404);
    if(path===ghRepo+'/actions/secrets/public-key')return respond({key:'A'.repeat(44),key_id:'key-a'});
    if(path===ghRepo+'/actions/workflows/kairos-install.yml')return respond({name:'KAIRÓS - instalação automática da célula',path:'.github/workflows/kairos-install.yml'});
@@ -64,7 +67,7 @@ test('two active Free projects refuse creation before GitHub POST',async()=>{
  assert.ok(mock.calls.every(x=>x.method==='GET'));
 });
 test('Supabase paid plan, Vercel non-Hobby and absent GitHub integration refuse all POSTs',async()=>{
- for(const opts of [{supabasePlan:'pro'},{vercelPlan:'pro'},{noGitLink:true},{githubLogin:'other'}]){
+ for(const opts of [{supabasePlan:'pro'},{vercelPlan:'pro'},{noGitLink:true},{restrictedLink:true},{githubLogin:'other'}]){
   const mock=server(opts);
   await assert.rejects(launch({fetcher:mock.fetcher,request}),InstallationError);
   assert.ok(mock.calls.every(x=>x.method==='GET'));
