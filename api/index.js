@@ -178,7 +178,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     const row=await db.installation(user.id,automation[1]);
     if(!row)throw new ControlError('NOT_FOUND');
     const approval=await readJSON(req);
-    const result=await authorizeAutomation({db,userId:user.id,row,approval,env});
+    const result=await authorizeAutomation({db,userId:user.id,login:user.login,row,approval,env});
     return json(res,202,result);
    }
    const detail=url.pathname.match(/^\/api\/installations\/([a-f0-9-]{36})$/i);
@@ -226,7 +226,8 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    const code=errCode(e);
    const status=code==='LOGIN_REQUIRED'?401:code==='NOT_FOUND'?404:
     code==='WORKER_UNAUTHORIZED'?401:
-    code==='AUTOMATION_DISABLED'||code==='HOMOLOGATION_LOCKED'||
+    code==='PRODUCTION_LOCKED'||code==='PROVISIONING_SCOPE_LOCKED'||
+    code==='PRODUCTION_AUTH_REQUIRED'||code==='AUTOMATION_DISABLED'||code==='HOMOLOGATION_LOCKED'||
     code==='WRITES_DISABLED'||code==='BETA_SQL_DISABLED'||code==='VERCEL_SCOPE_REQUIRED'?423:
     code==='NOT_CONFIGURED'||code==='STORE_UNAVAILABLE'||code==='STORE_NETWORK'?503:
     code==='INTERNAL_ERROR'?500:400;
