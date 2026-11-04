@@ -1,5 +1,6 @@
 // Background automation is handled by the server; this page only submits consent.
 import {VERCEL_TOKEN_URL,VERCEL_TOKEN_NAME,VERCEL_TOKEN_STEPS,VERCEL_TOKEN_SAFETY} from './vercel-token-guide.js';
+import {suggestRepositoryName} from './cell-repository-name.js';
 const phases=['GitHub','Supabase','Migrações','Vercel','Variáveis','Primeiro ADM','Deploy','Verificação'];
 const $=id=>document.getElementById(id);
 let session=null,selected=null,autoInstalling=false;
@@ -180,7 +181,7 @@ function renderPreinstallationAudit(report){
  const guard=report.homologation;
  if(guard)area.append(el('p',guard.readyForWrites?
   'Proteções de homologação configuradas para uma única instalação e com validade limitada. A criação real ainda requer confirmação de custos.':
-  'Proteção adicional ativa: somente uma instalação de homologação previamente autorizada poderá criar recursos. Nenhuma autorização de escrita foi concedida por este diagnóstico.',
+  'A instalação automática permanece bloqueada até a ativação segura do ambiente e a autorização individual de custos.',
   guard.readyForWrites?'preflight-info':'preflight-warning'));
  area.append(el('p',report.accessValidated?
   'Acesso de LEITURA confirmado nas três contas. Criar recursos de verdade ainda precisa ser testado.':
@@ -317,13 +318,20 @@ async function showInitialCredential(id){
   $('detail').append(view);
  }catch(err){notify(err.message);}
 }
+// The client can override the suggestion if their name is already used.
+let repositoryCustomized=false;
+const repoField=$('repo-name'),cellField=$('cell-name');
+cellField.addEventListener('input',()=>{
+ if(!repositoryCustomized)repoField.value=suggestRepositoryName(cellField.value);
+});
+repoField.addEventListener('input',()=>{repositoryCustomized=repoField.value.length>0;});
 $('create-form').addEventListener('submit',async event=>{
  event.preventDefault();notify('');
  if(!session?.signedIn)return;
  const form=new FormData(event.currentTarget),payload=Object.fromEntries(form.entries());
  try{
   const out=await api('/api/installations',{method:'POST',body:JSON.stringify(payload)});
-  event.currentTarget.reset();$('owner').value=session.user.login;
+  event.currentTarget.reset();repositoryCustomized=false;$('owner').value=session.user.login;
   $('vercel-team-id').value=session.vercelTeam?.teamId||'';
   $('vercel-team-display').value=session.vercelTeam?'Equipe: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId):'';
   notify('Instalação registrada. Nenhum projeto externo foi criado antes da autorização.');
