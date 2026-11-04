@@ -5,6 +5,7 @@ import {validateCloudPlan,safeInstallation,phaseFor} from '../control/plan.js';
 import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAuth,openOAuth,responseHeaders,json,redirect,readJSON} from '../control/http.js';
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
+import {connectVercel,readVercelConnection,publicVercelConnection} from '../control/vercel-connection.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
 function errCode(e){return e instanceof ControlError?e.code:'INTERNAL_ERROR';}
@@ -35,7 +36,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    const user=rawSession?await db.session(rawSession):null;
    if(url.pathname==='/api/auth/start'&&req.method==='GET'){
     const provider=url.searchParams.get('provider');
-    if(!['github','supabase','vercel'].includes(provider))throw new ControlError('BAD_PROVIDER');
+    if(!['github','supabase'].includes(provider))throw new ControlError('BAD_PROVIDER');
     if(provider!=='github'&&!user)throw new ControlError('LOGIN_REQUIRED','Entre com GitHub antes de conectar outros provedores');
     const config=providerConfig(provider,env);
     const callbackUrl=origin+'/api/auth/callback';
@@ -56,6 +57,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     // A repeated or concurrent callback must never reach the token endpoint.
     const cookieHash=createHash('sha256').update(sealed).digest('hex');
     if(!await db.claimOAuth(cookieHash))throw new ControlError('OAUTH_REPLAY','Autorização já utilizada');
+    if(transaction.provider==='vercel')throw new ControlError('BAD_PROVIDER');
     const config=providerConfig(transaction.provider,env);
     const token=await exchangeCode({transaction,code:url.searchParams.get('code'),config,fetcher});
     if(transaction.provider==='github'){
@@ -77,8 +79,12 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     return redirect(res,origin+'/app.html');
    }
    if(url.pathname==='/api/session'&&req.method==='GET'){
-    return json(res,200,user?{signedIn:true,user:{id:user.id,login:user.login},
-      providers:await db.connections(user.id),csrf:csrfFor(rawSession,{env})}:{signedIn:false,providers:[]});
+    if(!user)return json(res,200,{signedIn:false,providers:[]});
+    const credential=await readVercelConnection({db,userId:user.id,env});
+    const providers=(await db.connections(user.id)).filter(p=>p!=='vercel');
+    if(credential)providers.push('vercel');
+    return json(res,200,{signedIn:true,user:{id:user.id,login:user.login},
+     providers,vercelTeam:publicVercelConnection(credential),csrf:csrfFor(rawSession,{env})});
    }
    if(!user)throw new ControlError('LOGIN_REQUIRED','É necessário entrar com GitHub');
    if(url.pathname==='/api/logout'&&req.method==='POST'){
@@ -92,6 +98,15 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     const {provider}=await readJSON(req);
     await db.disconnect(user.id,provider);
     return json(res,200,{ok:true,provider});
+   }
+   if(url.pathname==='/api/connections/vercel'&&req.method==='POST'){
+    requireMutation(req,rawSession,{env});
+    const result=await connectVercel({db,userId:user.id,payload:await readJSON(req),env,fetcher});
+    return json(res,200,{ok:true,...result});
+   }
+   if(url.pathname==='/api/connections/vercel'&&req.method==='GET'){
+    const record=await readVercelConnection({db,userId:user.id,env});
+    return json(res,200,{connected:!!record,team:publicVercelConnection(record)});
    }
    if(url.pathname==='/api/vercel/diagnostics'&&req.method==='GET'){
     // Read-only, authenticated, no token or provider response body ever returned.
@@ -124,6 +139,9 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    if(url.pathname==='/api/installations'&&req.method==='POST'){
     requireMutation(req,rawSession,{env});
     const plan=validateCloudPlan(await readJSON(req),user.login);
+    const vercel=await readVercelConnection({db,userId:user.id,env});
+    if(!vercel||vercel.teamId!==plan.vercel_team_id)
+     throw new ControlError('VERCEL_TEAM_FORBIDDEN','Conecte primeiro a equipe Vercel selecionada');
     const installation=await db.createInstallation(user.id,plan);
     if(!installation)throw new ControlError('STORE_UNAVAILABLE');
     return json(res,201,{installation});
