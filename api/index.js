@@ -6,7 +6,7 @@ import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAut
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
-import {integrationAuthorizationUrl,integrationConfig,connectVercelIntegration} from '../control/vercel-oauth.js';
+import {integrationAuthorizationUrl,integrationConfig,connectVercelIntegration,safeVercelNext} from '../control/vercel-oauth.js';
 import {preinstallationAudit} from '../control/preinstall-audit.js';
 import {checkVercelGithubLink} from '../control/vercel-github-link.js';
 import {zeroCostAudit} from '../control/zero-cost-audit.js';
@@ -77,7 +77,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
      if(!user||user.id!==subject)throw new ControlError('OAUTH_SUBJECT','A sessão mudou durante a autorização');
      await connectVercelIntegration({db,userId:user.id,code:url.searchParams.get('code'),
       callbackUrl:origin+'/api/auth/callback',callbackTeamId:url.searchParams.get('teamId'),env,fetcher});
-     return redirect(res,origin+'/app.html');
+     return redirect(res,safeVercelNext(url.searchParams.get('next'))||origin+'/app.html');
     }
     const config=providerConfig(transaction.provider,env);
     const token=await exchangeCode({transaction,code:url.searchParams.get('code'),config,fetcher});
