@@ -39,3 +39,7 @@ O token nativo `GITHUB_TOKEN` tem permissões limitadas. Para operar Repository 
 
 ## Integração no monorepo
 O protótipo é mantido em `stateless/` para revisão independente. O projeto Vercel existente continua usando os arquivos da raiz. Para testar este protótipo, configure **outro projeto Vercel** com Root Directory `stateless` e variáveis próprias; nenhuma flag ou ambiente do Installer atual deve ser reutilizado. Até OAuth/antirreplay e revisão de permissões, mantenha o endpoint de criação fora do público.
+## Bloqueio adicional da rota de instalação (homologação)
+A API `/api/launch` permanece **inativa por padrão** e aceita apenas um escopo de cliente explicitamente autorizado por prazo máximo de sete dias. São exigidas **todas** as variáveis `KAIROS_STATELESS_HML_ENABLE_LAUNCH=1`, `KAIROS_STATELESS_HML_GITHUB_OWNER`, `KAIROS_STATELESS_HML_REPOSITORY`, `KAIROS_STATELESS_HML_SUPABASE_ORG`, `KAIROS_STATELESS_HML_VERCEL_SCOPE` e `KAIROS_STATELESS_HML_EXPIRES_AT` (UTC ISO 8601). O código verifica os alvos exatos antes de realizar qualquer POST de criação.
+
+**NÃO ATIVE ESSAS FLAGS EM UM SITE PÚBLICO SEM AUTENTICAÇÃO E CONTROLES DE ABUSO.** A allowlist evita destinos diferentes, mas qualquer visitante com tokens válidos ainda poderia enviar pedidos. Este protótipo não está pronto para disponibilização pública ou para células de produção. Os testes de GitHub Actions são simulados, e não provam o provisionamento real.
