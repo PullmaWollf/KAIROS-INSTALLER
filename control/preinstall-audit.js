@@ -1,6 +1,7 @@
 import {decryptControl} from './crypto.js';
 import {readVercelConnection} from './vercel-connection.js';
 import {preflightVercelAccount} from '../provisioner/providers.js';
+import {homologationGuardStatus} from './homologation-guard.js';
 
 const TEMPLATE='PullmaWollf/KAIROS-CORE';
 const timeout=ms=>AbortSignal.timeout(ms);
@@ -104,6 +105,7 @@ export async function preinstallationAudit({db,user,env=process.env,fetcher=fetc
   providers:[github,supabase,vercel],supabaseOrganizations:organizations,
   accessValidated,writePermissionsValidated:false,
   allStepsEnabled:Object.values(flags).every(Boolean),serverFlags:flags,
+  homologation:homologationGuardStatus(env),
   fullyHomologated:false,
   note:'Verificação de leitura somente. Criação de repositório, banco e projeto Vercel precisa de instalação descartável e autorizada para comprovar escrita.'};
 }
