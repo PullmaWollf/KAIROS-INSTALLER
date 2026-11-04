@@ -1,6 +1,7 @@
+import {runAssistedInstallation} from './cloud-assisted.js';
 const phases=['GitHub','Supabase','Migrações','Vercel','Variáveis','Primeiro ADM','Deploy','Verificação'];
 const $=id=>document.getElementById(id);
-let session=null,selected=null;
+let session=null,selected=null,autoInstalling=false;
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function button(text,handler,cls='secondary'){const b=el('button',text,cls);b.type='button';b.addEventListener('click',handler);return b;}
 function notify(message){$('alert').textContent=message||'';}
@@ -93,7 +94,11 @@ async function showDetail(id){
     box.append(el('p','Estado: '+current.status+(current.errorCode?' · '+current.errorCode:''),'warning'));
    }else box.append(el('p','Próxima etapa: '+phases[i.phaseIndex],'notice'));
    const actions=el('div',undefined,'toolbar');
-   if(!current)actions.append(button('Autorizar e executar etapa',()=>execute(i),'primary'));
+   if(!current){
+    const action=button(autoInstalling?'Instalando…':'Instalar automaticamente',()=>assisted(i),'primary');
+    action.disabled=autoInstalling;
+    actions.append(action,button('Executar somente esta etapa',()=>execute(i)));
+   }
    else actions.append(button('Verificar e reconciliar (somente leitura)',()=>reconcile(i)));
    box.append(actions);
   }else box.append(el('p','Todas as oito etapas estão registradas. Ainda é necessária homologação real.','notice'));
@@ -104,6 +109,24 @@ async function showDetail(id){
   }
   box.append(el('p','A instalação usa exclusivamente as contas informadas. Revisões de operações incertas não repetem ações remotas.','muted'));
  }catch(err){notify(err.message);}
+}
+async function assisted(i){
+ if(autoInstalling)return;
+ const approved=window.confirm('Autorizar toda a instalação da célula '+i.cellName+
+  '?\n\nGitHub: '+i.owner+'/'+i.repository+'\nSupabase: '+i.supabaseOrgId+
+  '\nVercel: '+i.vercelTeamId+
+  '\nDomínio solicitado: '+i.proposedDomain+
+  '\n\nOs provedores podem cobrar. O KAIRÓS executará as etapas em sequência; mantenha esta aba aberta até finalizar. Continuar?');
+ if(!approved)return;
+ autoInstalling=true;
+ try{
+  const consent={execute:true,acceptBilling:true,owner:i.owner,
+   supabaseOrgId:i.supabaseOrgId,vercelTeamId:i.vercelTeamId};
+  await runAssistedInstallation({request:api,installationId:i.id,consent,
+   onProgress:message=>notify(message)});
+  notify('Etapas do Installer concluídas; valide também login, permissões e PWA em dispositivos.');
+ }catch(error){notify('Instalação pausada com segurança: '+error.message);}
+ finally{autoInstalling=false;await loadInstallations();}
 }
 async function execute(i){
  const consent=window.confirm('Autoriza a etapa '+phases[i.phaseIndex]+'?\n\nGitHub: '+i.owner+
