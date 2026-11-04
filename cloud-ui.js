@@ -206,6 +206,49 @@ async function runPreinstallationAudit(){
  finally{btn.disabled=false;btn.textContent='Verificar novamente';}
 }
 $('preinstall-check').addEventListener('click',runPreinstallationAudit);
+
+const freeReason={
+ FREE_PLAN:'Plano gratuito confirmado',
+ FREE_SLOT_OBSERVED:'Plano gratuito com vaga observada',
+ FREE_QUOTA_FULL:'Sem vaga gratuita disponível (limite de 2 projetos ativos)',
+ PAID_PLAN:'Plano não gratuito; operação bloqueada',
+ PLAN_NOT_VERIFIED:'Não foi possível confirmar o plano gratuito',
+ NOT_CONNECTED:'Conta não conectada ou credencial expirada',
+ ORG_NOT_FOUND:'Organização selecionada não encontrada nesta conta',
+ PROVIDER_UNAVAILABLE:'Não foi possível verificar o provedor'
+};
+async function runZeroCostAudit(){
+ const area=$('zero-cost-results'),btn=$('zero-cost-check');
+ const organizationId=$('supabase-org').value.trim();
+ area.replaceChildren();
+ if(!organizationId){
+  area.append(el('p','Selecione uma organização Supabase antes de verificar o custo. Use o botão Verificar conexões para descobrir suas organizações.','preflight-warning'));
+  return;
+ }
+ btn.disabled=true;btn.textContent='Consultando os planos…';
+ try{
+  const report=await api('/api/zero-cost-audit?supabaseOrgId='+encodeURIComponent(organizationId));
+  const grid=el('div',undefined,'preflight-cards');
+  for(const [title,provider] of [
+   ['GitHub — repositório gratuito',report.github],
+   ['Supabase — projeto gratuito',report.supabase],
+   ['Vercel — hospedagem gratuita',report.vercel]
+  ]){
+   const tile=el('div',undefined,'preflight-card '+(provider?.eligible?'verified':'unverified'));
+   tile.append(el('strong',title),el('p',freeReason[provider?.reason]||
+    (provider?.eligible?'Disponível':'Não comprovado'),'state-label'));
+   grid.append(tile);
+  }
+  area.append(grid,el('p',report.eligible?
+   'Pré-requisitos gratuitos observados, mas a disponibilidade pode mudar. A instalação automática continua exigindo autorização e habilitação segura do servidor.':
+   'CUSTO ZERO NÃO COMPROVADO: o KAIRÓS não deve criar recursos neste destino.',
+   report.eligible?'preflight-info':'preflight-warning'));
+  area.append(el('p','Verificação somente de leitura. Nenhum recurso criado, cobrança autorizada ou quota reservada. Vercel Hobby permite apenas testes pessoais não comerciais.','muted'));
+ }catch(error){area.replaceChildren(el('p','Verificação de custo zero indisponível: '+error.message,'preflight-warning'));}
+ finally{btn.disabled=false;btn.textContent='Verificar custo zero';}
+}
+$('zero-cost-check').addEventListener('click',runZeroCostAudit);
+
 async function loadInstallations(){
  try{
   const {installations}=await api('/api/installations');
@@ -276,12 +319,30 @@ async function showDetail(id){
 }
 async function assisted(i){
  if(autoInstalling)return;
- const approved=window.confirm('Autorizar o KAIRÓS a criar automaticamente a infraestrutura da célula '+i.cellName+
-  '?\n\nGitHub: '+i.owner+'/'+i.repository+
-  '\nSupabase: '+i.supabaseOrgId+'\nVercel: '+i.vercelTeamId+
-  '\nDomínio desejado: '+i.proposedDomain+
-  '\n\nOs provedores podem cobrar. O KAIRÓS continuará no servidor mesmo com o navegador fechado. Autoriza?');
- if(!approved)return;
+ let policy;
+ try{
+  policy=await api('/api/installations/'+i.id+'/automation');
+  if(!policy.enabled){
+   notify('O KAIRÓS ainda não liberou o executor automático. Nenhuma conta será cobrada.');
+   return;
+  }
+  if(policy.zeroCostOnly){
+   const verification=await api('/api/zero-cost-audit?supabaseOrgId='+encodeURIComponent(i.supabaseOrgId));
+   if(!verification.eligible){
+    notify('Custo zero não comprovado no Supabase e Vercel. Instalação bloqueada antes de criar recursos.');
+    return;
+   }
+  }
+ }catch(error){notify('Não foi possível validar custo e permissões: '+error.message);return;}
+ const message='Autorizar o KAIRÓS a instalar automaticamente a célula '+i.cellName+
+  '?\\n\\nGitHub: '+i.owner+'/'+i.repository+
+  '\\nSupabase: '+i.supabaseOrgId+'\\nVercel: '+i.vercelTeamId+
+  '\\nDomínio desejado: '+i.proposedDomain+
+  (policy.zeroCostOnly?
+   '\\n\\nMODO CUSTO ZERO: recursos gratuitos somente, para teste pessoal não comercial. O servidor verificará novamente cada etapa e bloqueará planos pagos ou quotas não comprovadas.':
+   '\\n\\nOs provedores podem cobrar por recursos e uso.')+
+  '\\nA instalação continuará no servidor, mesmo se você fechar o navegador. Autoriza?';
+ if(!window.confirm(message))return;
  autoInstalling=true;
  try{
   const approval={execute:true,acceptBilling:true,expectedPhase:'github',
