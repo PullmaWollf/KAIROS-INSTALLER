@@ -243,7 +243,8 @@ async function showDetail(id){
      action.disabled=autoInstalling||!automatic.enabled;
      actions.append(action);
     }
-    actions.append(button('Executar somente esta etapa (manual)',()=>execute(i)));
+    if(!automatic.automation||['paused','completed'].includes(automatic.automation.state))
+     actions.append(button('Executar somente esta etapa (manual)',()=>execute(i)));
    }
    else actions.append(button('Verificar e reconciliar (somente leitura)',()=>reconcile(i)));
    box.append(actions);
