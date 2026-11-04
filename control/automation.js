@@ -1,4 +1,3 @@
-import {timingSafeEqual} from 'node:crypto';
 import {ControlError} from './crypto.js';
 import {phaseFor} from './plan.js';
 import {assertHomologationScope} from './homologation-guard.js';
@@ -16,18 +15,7 @@ export function automationReady(env=process.env){
   env.KAIROS_CONTROL_ENABLE_WRITES==='1'&&
   env.KAIROS_VERCEL_MANAGEMENT_ENABLED==='1'&&
   env.KAIROS_ENABLE_BETA_SQL==='1'&&
-  env.KAIROS_ENABLE_GIT_DEPLOY==='1'&&
-  typeof env.CRON_SECRET==='string'&&env.CRON_SECRET.length>=32;
-}
-export function assertAutomationCaller(header,env=process.env){
- const secret=env.CRON_SECRET;
- if(typeof secret!=='string'||secret.length<32||
-  typeof header!=='string'||!header.startsWith('Bearer '))
-  throw new ControlError('WORKER_UNAUTHORIZED');
- const expected=Buffer.from('Bearer '+secret),supplied=Buffer.from(header);
- if(expected.length!==supplied.length||!timingSafeEqual(expected,supplied))
-  throw new ControlError('WORKER_UNAUTHORIZED');
- return true;
+  env.KAIROS_ENABLE_GIT_DEPLOY==='1';
 }
 function requireLiveAutomation(env){
  if(!automationReady(env))throw new ControlError('AUTOMATION_DISABLED',
