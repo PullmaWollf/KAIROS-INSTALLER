@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {automationReady,assertAutomationCaller,authorizeAutomation,tickAutomation} from '../control/automation.js';
+import {automationReady,authorizeAutomation,tickAutomation} from '../control/automation.js';
 import {ControlError} from '../control/crypto.js';
 
 const row={id:'12345678-1234-1234-1234-123456789012',github_id:42,
@@ -28,12 +28,11 @@ test('disabled worker never obtains a lease or creates projects',async()=>{
   {code:'AUTOMATION_DISABLED'});
  assert.equal(calls,0);
 });
-test('scheduler endpoint must have a strong exact bearer token',()=>{
- assert.equal(assertAutomationCaller('Bearer '+env.CRON_SECRET,env),true);
- for(const value of ['Bearer wrong','Basic '+env.CRON_SECRET,'Bearer '+env.CRON_SECRET+'x',null])
-  assert.throws(()=>assertAutomationCaller(value,env),{code:'WORKER_UNAUTHORIZED'});
- assert.throws(()=>assertAutomationCaller('Bearer '+env.CRON_SECRET,{
-  ...env,CRON_SECRET:'short'}),{code:'WORKER_UNAUTHORIZED'});
+test('server automation does not require shared secrets but still requires every write gate',()=>{
+ const {CRON_SECRET,...withoutSecret}=env;
+ assert.equal(automationReady(withoutSecret),true);
+ assert.equal(automationReady({...withoutSecret,KAIROS_AUTOMATION_ENABLED:'0'}),false);
+ assert.equal(automationReady({...withoutSecret,KAIROS_CONTROL_ENABLE_WRITES:'0'}),false);
 });
 test('one customer authorization persists only the exact disposable target',async()=>{
  let count=0;
