@@ -85,7 +85,15 @@ test('only real cryptographic scheduler identity can hit the hosted tick endpoin
   KAIROS_INSTALLER_PUBLIC_ORIGIN:'https://kairos-installer-homolog.vercel.app',
   KAIROS_AUTOMATION_ENABLED:'1',KAIROS_HOMOLOGATION_MODE:'1',
   KAIROS_CONTROL_ENABLE_WRITES:'1',KAIROS_VERCEL_MANAGEMENT_ENABLED:'1',
-  KAIROS_ENABLE_BETA_SQL:'1',KAIROS_ENABLE_GIT_DEPLOY:'1'
+  KAIROS_ENABLE_BETA_SQL:'1',KAIROS_ENABLE_GIT_DEPLOY:'1',
+  KAIROS_HML_GITHUB_ID:'42',
+  KAIROS_HML_GITHUB_LOGIN:'okarakimoto',
+  KAIROS_HML_SUPABASE_ORG_ID:'test_org',
+  KAIROS_HML_VERCEL_SCOPE:'team_test1234',
+  KAIROS_HML_REPOSITORY:'kairos-hml-testcase',
+  KAIROS_HML_INSTALLATION_ID:'123e4567-e89b-42d3-a456-426614174000',
+  KAIROS_HML_EXPIRES_AT:new Date(Date.now()+3600000).toISOString(),
+  KAIROS_VERCEL_TEAM_ID:'team_installer999'
  };
  const handler=createHostedHandler({env,fetcher,storeFactory:()=>db});
  const request=auth=>({url:'/api/automation/tick',method:'GET',

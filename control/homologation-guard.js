@@ -34,11 +34,11 @@ export function homologationGuardStatus(env=process.env,{now=Date.now()}={}){
  return Object.freeze({
   mode:'isolated-homologation',
   protected:valid,
-  enabled:valid&&env.KAIROS_HOMOLOGATION_MODE==='1',
+  enabled:valid&&env.KAIROS_HOMOLOGATION_MODE==='1'&&env.KAIROS_PRODUCTION_MODE!=='1',
   provisioningEnabled:env.KAIROS_CONTROL_ENABLE_WRITES==='1',
   missingKeys:missing,
   expiryValid:finiteWindow,
-  readyForWrites:valid&&env.KAIROS_HOMOLOGATION_MODE==='1'&&
+  readyForWrites:valid&&env.KAIROS_HOMOLOGATION_MODE==='1'&&env.KAIROS_PRODUCTION_MODE!=='1'&&
    env.KAIROS_CONTROL_ENABLE_WRITES==='1'&&
    env.KAIROS_VERCEL_MANAGEMENT_ENABLED==='1'&&
    env.KAIROS_ENABLE_BETA_SQL==='1'&&
