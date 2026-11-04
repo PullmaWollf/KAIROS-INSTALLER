@@ -6,6 +6,7 @@ import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAut
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
+import {preinstallationAudit} from '../control/preinstall-audit.js';
 import {vercelQuery} from '../provisioner/vercel-scope.js';
 
 const sessionName='kairos_control_session',oauthName='kairos_control_oauth';
@@ -136,6 +137,10 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
       status===404?'TEAM_NOT_FOUND':'PROVIDER_UNAVAILABLE',
      writesEnabled:env.KAIROS_CONTROL_ENABLE_WRITES==='1',
      managementEnabled:env.KAIROS_VERCEL_MANAGEMENT_ENABLED==='1'});
+   }
+   if(url.pathname==='/api/preinstallation-audit'&&req.method==='GET'){
+    const report=await preinstallationAudit({db,user,env,fetcher});
+    return json(res,200,report);
    }
    if(url.pathname==='/api/installations'&&req.method==='GET'){
     return json(res,200,{installations:await db.installations(user.id)});
