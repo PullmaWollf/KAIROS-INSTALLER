@@ -361,13 +361,13 @@ async function assisted(i){
   }
  }catch(error){notify('Não foi possível validar custo e permissões: '+error.message);return;}
  const message='Autorizar o KAIRÓS a instalar automaticamente a célula '+i.cellName+
-  '?\\n\\nGitHub: '+i.owner+'/'+i.repository+
-  '\\nSupabase: '+i.supabaseOrgId+'\\nVercel: '+i.vercelTeamId+
-  '\\nDomínio desejado: '+i.proposedDomain+
+  '?\n\nGitHub: '+i.owner+'/'+i.repository+
+  '\nSupabase: '+i.supabaseOrgId+'\nVercel: '+i.vercelTeamId+
+  '\nDomínio desejado: '+i.proposedDomain+
   (policy.zeroCostOnly?
-   '\\n\\nMODO CUSTO ZERO: recursos gratuitos somente, para teste pessoal não comercial. O servidor verificará novamente cada etapa e bloqueará planos pagos ou quotas não comprovadas.':
-   '\\n\\nOs provedores podem cobrar por recursos e uso.')+
-  '\\nA instalação continuará no servidor, mesmo se você fechar o navegador. Autoriza?';
+   '\n\nMODO CUSTO ZERO: recursos gratuitos somente, para teste pessoal não comercial. O servidor verificará novamente cada etapa e bloqueará planos pagos ou quotas não comprovadas.':
+   '\n\nOs provedores podem cobrar por recursos e uso.')+
+  '\nA instalação continuará no servidor, mesmo se você fechar o navegador. Autoriza?';
  if(!window.confirm(message))return;
  autoInstalling=true;
  try{
@@ -432,7 +432,7 @@ $('create-form').addEventListener('submit',async event=>{
   $('vercel-team-display').value=session.vercelTeam?'Equipe: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId):'';
   notify('Instalação registrada. Nenhum projeto externo foi criado antes da autorização.');
   await loadInstallations();await showDetail(out.installation.id);
-  await assisted(out.installation);
+  notify('Revise os destinos e clique no botão de instalação para autorizar. Nenhum recurso foi criado.');
  }catch(err){notify(err.message);}
 });
 $('logout').addEventListener('click',async()=>{
