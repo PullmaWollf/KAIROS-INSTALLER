@@ -6,7 +6,6 @@ import {configuredOrigin,cookieValue,makeCookie,csrfFor,requireMutation,sealOAut
 import {beginAuthorization,providerConfig,exchangeCode,safeEqual} from '../oauth/protocol.js';
 import {executeCloudStep,reconcileCloudStep,statusForClient} from '../control/engine.js';
 import {connectVercel,readVercelConnection,publicVercelConnection,discoverVercelTeams} from '../control/vercel-connection.js';
-import {integrationAuthorizationUrl,integrationConfig,connectVercelIntegration,safeVercelNext} from '../control/vercel-oauth.js';
 import {preinstallationAudit} from '../control/preinstall-audit.js';
 import {checkVercelGithubLink} from '../control/vercel-github-link.js';
 import {zeroCostAudit} from '../control/zero-cost-audit.js';
@@ -49,14 +48,11 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
    const user=rawSession?await db.session(rawSession):null;
    if(url.pathname==='/api/auth/start'&&req.method==='GET'){
     const provider=url.searchParams.get('provider');
-    if(!['github','supabase','vercel'].includes(provider))throw new ControlError('BAD_PROVIDER');
+    if(!['github','supabase'].includes(provider))throw new ControlError('BAD_PROVIDER');
     if(provider!=='github'&&!user)throw new ControlError('LOGIN_REQUIRED','Entre com GitHub antes de conectar outros provedores');
+    const config=providerConfig(provider,env);
     const callbackUrl=origin+'/api/auth/callback';
-    // Vercel Integration OAuth (management grant) is distinct from Vercel OIDC login.
-    const config=provider==='vercel'?integrationConfig(env):providerConfig(provider,env);
-    const {url:initialUrl,transaction}=beginAuthorization({provider,callbackUrl,config:provider==='vercel'?
-     {authorizationUrl:'https://vercel.com/oauth/authorize',clientId:config.clientId}:config});
-    const authUrl=provider==='vercel'?integrationAuthorizationUrl({state:transaction.state,env}):initialUrl;
+    const {url:authUrl,transaction}=beginAuthorization({provider,callbackUrl,config});
     const sealed=sealOAuth(transaction,user?.id||null,{env});
     res.setHeader('Set-Cookie',makeCookie(oauthName,sealed,{age:600,path:'/api/auth'}));
     res.statusCode=302;res.setHeader('Location',authUrl);return res.end();
@@ -73,12 +69,7 @@ export function createHostedHandler({env=process.env,fetcher=fetch,storeFactory}
     // A repeated or concurrent callback must never reach the token endpoint.
     const cookieHash=createHash('sha256').update(sealed).digest('hex');
     if(!await db.claimOAuth(cookieHash))throw new ControlError('OAUTH_REPLAY','Autorização já utilizada');
-    if(transaction.provider==='vercel'){
-     if(!user||user.id!==subject)throw new ControlError('OAUTH_SUBJECT','A sessão mudou durante a autorização');
-     await connectVercelIntegration({db,userId:user.id,code:url.searchParams.get('code'),
-      callbackUrl:origin+'/api/auth/callback',callbackTeamId:url.searchParams.get('teamId'),env,fetcher});
-     return redirect(res,safeVercelNext(url.searchParams.get('next'))||origin+'/app.html');
-    }
+    if(transaction.provider==='vercel')throw new ControlError('BAD_PROVIDER');
     const config=providerConfig(transaction.provider,env);
     const token=await exchangeCode({transaction,code:url.searchParams.get('code'),config,fetcher});
     if(transaction.provider==='github'){
