@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {automationReady,assertAutomationCaller,authorizeAutomation,tickAutomation} from '../control/automation.js';
+import {ControlError} from '../control/crypto.js';
 
 const row={id:'12345678-1234-1234-1234-123456789012',github_id:42,
  owner:'customer',repository:'kairos-hml-celula001',cell_name:'HML Célula 001',
@@ -111,4 +112,27 @@ test('a crashed worker will NEVER repeat uncertain GitHub, database or Vercel cr
   assert.equal(out.status,'paused');assert.equal(out.reason,'MANUAL_REVIEW_REQUIRED');
   assert.equal(calls,0);
  }
+});
+
+test('project warm-up waits without any duplicate Supabase or Vercel POST',async()=>{
+ let claims=0,runs=0,settled=null;
+ const job={installationId:row.id,claimId:uuid,userId:42,owner:row.owner,
+  repository:row.repository,supabaseOrgId:row.supabase_org_id,
+  vercelTeamId:row.vercel_team_id,expiresAt:env.KAIROS_HML_EXPIRES_AT,acceptBilling:true};
+ const db={
+  async claimAutomation(){return job;},
+  async installation(){return {...row,phase_index:2,supabase_ref:'abcdefghijklmnopqrst'};},
+  async operations(){return []},
+  async claim(){claims++;},
+  async settleAutomation(out){settled=out;return true;}
+ };
+ const worker={
+  async precheck(){throw new ControlError('PROJECT_NOT_READY')},
+  async run(){runs++}
+ };
+ const outcome=await tickAutomation({db,env,worker});
+ assert.equal(outcome.status,'waiting');
+ assert.equal(settled.delaySeconds,90);
+ assert.equal(claims,0);
+ assert.equal(runs,0);
 });
