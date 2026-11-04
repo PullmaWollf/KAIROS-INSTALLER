@@ -18,12 +18,12 @@ export async function preflightSupabase({fetcher=fetch,token,organizationId}){
  // API membership alone does not prove ownership. Explicit authorization remains necessary for writes.
  return Object.freeze({provider:'supabase',organizationId:id,organizationName:String(org.name||'').slice(0,90),organizationSlug:org.slug,accessible:true,ownership:'not-verified',createsResources:false});
 }
-export async function preflightVercel({fetcher=fetch,token,teamId}){
+export async function preflightVercel({fetcher=fetch,token,teamId,operatorMode=false}){
  const id=required(teamId,'Identificador do time Vercel');
  const user=await providerGet({fetcher,base:'https://api.vercel.com',path:'/v2/user',token,provider:'Vercel'});
  const login=user?.user?.username;
  if(!login||typeof login!=='string')throw new ProvisioningError('BAD_RESPONSE','Vercel: identidade inválida');
- otherAccount(login,'Conta Vercel');
+ if(!operatorMode)otherAccount(login,'Conta Vercel');
  const body=await providerGet({fetcher,base:'https://api.vercel.com',path:'/v2/teams?limit=100',token,provider:'Vercel'});
  const teams=body?.teams;
  if(!Array.isArray(teams))throw new ProvisioningError('BAD_RESPONSE','Vercel: lista de times inválida');
