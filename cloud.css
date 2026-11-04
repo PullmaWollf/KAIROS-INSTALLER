@@ -4,3 +4,26 @@
 .header>.toolbar{align-items:center;margin:0}
 
 .vercel-guide{display:grid;gap:7px}.vercel-guide p{margin:0;line-height:1.45}.vercel-connect-form{display:grid;gap:9px;margin-top:8px}.vercel-connect-form[hidden]{display:none}.vercel-connect-form .state-label{margin:0}.vercel-connect-form button{width:100%}
+
+/* Guided Vercel onboarding, visible before opening the external token page. */
+.provider-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.provider-vercel{grid-column:1/-1}
+.vercel-guide{display:grid;gap:12px;border:1px solid #dbe6f5;border-radius:12px;padding:16px;background:#f8faff}
+.vercel-guide[hidden]{display:none}
+.vercel-guide h3{margin:0;font-size:1rem;color:#203657}
+.vercel-guide>.state-label{margin:0}
+.vercel-guide>.link-button{justify-self:start}
+.vercel-token-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;list-style:none;padding:0;margin:2px 0}
+.vercel-token-step{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:13px;background:#fff;border:1px solid #dce5f2;border-radius:10px;min-width:0}
+.vercel-step-label{font-size:.71rem;letter-spacing:.045em;font-weight:760;color:#526981}
+.vercel-step-value{font-size:.93rem;color:#1e3355;overflow-wrap:anywhere}
+.vercel-token-step p{margin:0;font-size:.82rem;line-height:1.5}
+.vercel-copy-name{padding:6px 10px;font-size:.76rem;margin-top:auto}
+.vercel-next{margin:0;font-size:.88rem;font-weight:690;color:#213c67}
+.vercel-safety{margin:0;font-size:.82rem;line-height:1.5;color:#4d6076}
+@media(max-width:750px){
+ .provider-grid{grid-template-columns:1fr}
+ .provider-vercel{grid-column:auto}
+ .vercel-token-steps{grid-template-columns:1fr}
+ .vercel-guide>.link-button{justify-self:stretch}
+}

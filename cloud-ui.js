@@ -1,4 +1,5 @@
 import {runAssistedInstallation} from './cloud-assisted.js';
+import {VERCEL_TOKEN_URL,VERCEL_TOKEN_NAME,VERCEL_TOKEN_STEPS,VERCEL_TOKEN_SAFETY} from './vercel-token-guide.js';
 const phases=['GitHub','Supabase','Migrações','Vercel','Variáveis','Primeiro ADM','Deploy','Verificação'];
 const $=id=>document.getElementById(id);
 let session=null,selected=null,autoInstalling=false;
@@ -26,18 +27,40 @@ async function initialize(){
    !session.signedIn||!['github','supabase','vercel'].every(p=>session.providers?.includes(p));
   const list=$('providers');list.replaceChildren();
   for(const provider of ['github','supabase','vercel']){
-   const card=el('div',undefined,'provider'),connected=session.providers?.includes(provider);
+   const card=el('div',undefined,'provider'+(provider==='vercel'?' provider-vercel':'')),connected=session.providers?.includes(provider);
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
    if(provider==='vercel'){
     if(session.vercelTeam)card.append(el('small','Hospedagem conectada: '+(session.vercelTeam.teamSlug||session.vercelTeam.teamId),'state-label'));
-    const guide=el('div',undefined,'vercel-guide');
-    guide.append(el('p','A hospedagem é sua: use a sua conta Vercel. Não precisa informar códigos técnicos.','state-label'));
-    const instructions=el('p','1. Abra sua Vercel e crie uma chave de acesso para sua conta.','state-label');
-    const tokenLink=el('a','Abrir Vercel e criar token','link-button secondary');
-    tokenLink.href='https://vercel.com/account/tokens';
+    const guide=el('section',undefined,'vercel-guide');
+    guide.setAttribute('aria-label','Como criar sua chave de acesso Vercel');
+    guide.append(
+     el('h3','Como conectar a sua Vercel'),
+     el('p','Abra a Vercel e preencha estes 3 campos para criar sua chave. Não precisa entender contas pessoais nem equipes.','state-label'));
+    const tokenLink=el('a','1. Abrir a Vercel e criar a chave','link-button primary');
+    tokenLink.href=VERCEL_TOKEN_URL;
     tokenLink.target='_blank';tokenLink.rel='noopener noreferrer';
-    guide.append(instructions,tokenLink,el('p','2. Copie a chave e cole abaixo. O KAIRÓS identifica sua hospedagem automaticamente.','state-label'));
+    guide.append(tokenLink);
+    const steps=el('ol',undefined,'vercel-token-steps');
+    for(const step of VERCEL_TOKEN_STEPS){
+     const item=el('li',undefined,'vercel-token-step');
+     const title=el('span',step.field,'vercel-step-label');
+     const value=el('strong',step.value,'vercel-step-value');
+     const note=el('p',step.explanation,'state-label');
+     item.append(title,value,note);
+     if(step.field==='TOKEN NAME'){
+      const copy=button('Copiar nome',async()=>{
+       try{await navigator.clipboard.writeText(VERCEL_TOKEN_NAME);
+        copy.textContent='Copiado!';
+       }catch{copy.textContent='Selecione o nome acima para copiar';}
+      },'secondary');
+      copy.classList.add('vercel-copy-name');
+      item.append(copy);
+     }
+     steps.append(item);
+    }
+    guide.append(steps,el('p','Depois clique em Create, copie a chave gerada e cole no campo abaixo.','vercel-next'),
+     el('p',VERCEL_TOKEN_SAFETY,'vercel-safety'));
     card.append(guide);
     const form=document.createElement('form');form.className='vercel-connect-form';
     form.autocomplete='off';
@@ -99,7 +122,8 @@ async function initialize(){
     });
     if(connected){
      form.hidden=true;
-     card.append(button('Atualizar conexão',()=>{form.hidden=false;secret.focus();},'secondary'));
+     guide.hidden=true;
+     card.append(button('Atualizar conexão',()=>{guide.hidden=false;form.hidden=false;secret.focus();},'secondary'));
     }
     card.append(form);
    }else{
