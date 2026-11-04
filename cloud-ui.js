@@ -178,6 +178,15 @@ function renderPreinstallationAudit(report){
   'Publicação automática':f.deployment}).filter(x=>!x[1]).map(x=>x[0]);
  if(missing.length)area.append(el('p','Ainda bloqueado no servidor: '+missing.join(', ')+
   '. Essas operações só serão habilitadas na homologação autorizada.','preflight-warning'));
+ if(report.production){
+  const isProduction=report.production.enabled;
+  area.append(el('p',isProduction?
+   'Modo de produção autorizado no servidor. Cada instalação ainda precisa de confirmação individual de custos e da propriedade das três contas.':
+   report.production.selected?
+    'Produção selecionada, mas ainda bloqueada por configurações de segurança. Nenhum recurso será criado.':
+    'Modo de produção inativo: esta versão ainda não pode criar recursos de clientes.',
+   isProduction?'preflight-info':'preflight-warning'));
+ }
  const guard=report.homologation;
  if(guard)area.append(el('p',guard.readyForWrites?
   'Proteções de homologação configuradas para uma única instalação e com validade limitada. A criação real ainda requer confirmação de custos.':
@@ -225,7 +234,7 @@ async function showDetail(id){
     (info.lastError?' · '+info.lastError:''),'notice'));
    box.append(button('Atualizar andamento',()=>showDetail(id)));
   }else if(!automatic.enabled){
-   box.append(el('p','Execução automática aguardando liberação das proteções de homologação e do agendador. Nenhum projeto será criado enquanto estiver bloqueada.','warning'));
+   box.append(el('p','Execução automática ainda não liberada pelo servidor. Nenhum projeto externo será criado enquanto estiver bloqueada.','warning'));
   }
   box.append(el('h2',i.cellName+' — acompanhamento'));
   if(i.proposedDomain)box.append(el('p','Domínio solicitado: https://'+i.proposedDomain+' (sujeito à disponibilidade)','notice'));
@@ -244,8 +253,8 @@ async function showDetail(id){
      action.disabled=autoInstalling||!automatic.enabled;
      actions.append(action);
     }
-    if(!automatic.automation||['paused','completed'].includes(automatic.automation.state))
-     actions.append(button('Executar somente esta etapa (manual)',()=>execute(i)));
+    // Production deliberately has no direct write path: queue and lease only.
+    // Legacy homologation-only manual endpoint stays server-side gated.
    }
    else actions.append(button('Verificar e reconciliar (somente leitura)',()=>reconcile(i)));
    box.append(actions);
