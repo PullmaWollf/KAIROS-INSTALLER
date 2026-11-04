@@ -1,4 +1,4 @@
-import {runAssistedInstallation} from './cloud-assisted.js';
+// Background automation is handled by the server; this page only submits consent.
 import {VERCEL_TOKEN_URL,VERCEL_TOKEN_NAME,VERCEL_TOKEN_STEPS,VERCEL_TOKEN_SAFETY} from './vercel-token-guide.js';
 const phases=['GitHub','Supabase','Migrações','Vercel','Variáveis','Primeiro ADM','Deploy','Verificação'];
 const $=id=>document.getElementById(id);
@@ -214,7 +214,18 @@ async function loadInstallations(){
 async function showDetail(id){
  try{
   const {installation:i,operations}=await api('/api/installations/'+id);
+  const automatic=await api('/api/installations/'+id+'/automation').catch(()=>({enabled:false,automation:null}));
   selected=id;const box=$('detail');box.replaceChildren();
+  if(automatic.automation){
+   const info=automatic.automation;
+   const status={queued:'Na fila',running:'Criando recursos',waiting:'Aguardando confirmação',
+    paused:'Pausada para revisão',completed:'Concluída'}[info.state]||info.state;
+   box.append(el('p','Automação no servidor: '+status+
+    (info.lastError?' · '+info.lastError:''),'notice'));
+   box.append(button('Atualizar andamento',()=>showDetail(id)));
+  }else if(!automatic.enabled){
+   box.append(el('p','Execução automática aguardando liberação das proteções de homologação e do agendador. Nenhum projeto será criado enquanto estiver bloqueada.','warning'));
+  }
   box.append(el('h2',i.cellName+' — acompanhamento'));
   if(i.proposedDomain)box.append(el('p','Domínio solicitado: https://'+i.proposedDomain+' (sujeito à disponibilidade)','notice'));
   const progress=el('ol',undefined,'steps');
@@ -227,9 +238,12 @@ async function showDetail(id){
    }else box.append(el('p','Próxima etapa: '+phases[i.phaseIndex],'notice'));
    const actions=el('div',undefined,'toolbar');
    if(!current){
-    const action=button(autoInstalling?'Instalando…':'Instalar automaticamente',()=>assisted(i),'primary');
-    action.disabled=autoInstalling;
-    actions.append(action,button('Executar somente esta etapa',()=>execute(i)));
+    if(!automatic.automation){
+     const action=button(autoInstalling?'Registrando…':'Criar repositório, banco e projeto automaticamente',()=>assisted(i),'primary');
+     action.disabled=autoInstalling||!automatic.enabled;
+     actions.append(action);
+    }
+    actions.append(button('Executar somente esta etapa (manual)',()=>execute(i)));
    }
    else actions.append(button('Verificar e reconciliar (somente leitura)',()=>reconcile(i)));
    box.append(actions);
@@ -251,21 +265,24 @@ async function showDetail(id){
 }
 async function assisted(i){
  if(autoInstalling)return;
- const approved=window.confirm('Autorizar toda a instalação da célula '+i.cellName+
-  '?\n\nGitHub: '+i.owner+'/'+i.repository+'\nSupabase: '+i.supabaseOrgId+
-  '\nVercel: '+i.vercelTeamId+
-  '\nDomínio solicitado: '+i.proposedDomain+
-  '\n\nOs provedores podem cobrar. O KAIRÓS executará as etapas em sequência; mantenha esta aba aberta até finalizar. Continuar?');
+ const approved=window.confirm('Autorizar o KAIRÓS a criar automaticamente a infraestrutura da célula '+i.cellName+
+  '?\n\nGitHub: '+i.owner+'/'+i.repository+
+  '\nSupabase: '+i.supabaseOrgId+'\nVercel: '+i.vercelTeamId+
+  '\nDomínio desejado: '+i.proposedDomain+
+  '\n\nOs provedores podem cobrar. O KAIRÓS continuará no servidor mesmo com o navegador fechado. Autoriza?');
  if(!approved)return;
  autoInstalling=true;
  try{
-  const consent={execute:true,acceptBilling:true,owner:i.owner,
+  const approval={execute:true,acceptBilling:true,expectedPhase:'github',
+   owner:i.owner,repository:i.repository,
    supabaseOrgId:i.supabaseOrgId,vercelTeamId:i.vercelTeamId};
-  await runAssistedInstallation({request:api,installationId:i.id,consent,
-   onProgress:message=>notify(message)});
-  notify('Etapas do Installer concluídas; valide também login, permissões e PWA em dispositivos.');
- }catch(error){notify('Instalação pausada com segurança: '+error.message);}
- finally{autoInstalling=false;await loadInstallations();}
+  const out=await api('/api/installations/'+i.id+'/automation/start',{
+   method:'POST',body:JSON.stringify(approval)});
+  notify(out.accepted?'Instalação autorizada e colocada na fila do servidor. Você pode fechar o navegador.':
+   'Não foi possível autorizar a automação.');
+ }catch(error){
+  notify('Automação bloqueada com segurança: '+error.message);
+ }finally{autoInstalling=false;await loadInstallations();}
 }
 async function execute(i){
  const consent=window.confirm('Autoriza a etapa '+phases[i.phaseIndex]+'?\n\nGitHub: '+i.owner+
