@@ -9,6 +9,7 @@ import {createSupabaseProject,createVercelProject} from '../provisioner/create-p
 import {preflightSupabase,preflightVercel} from '../provisioner/providers.js';
 import {configureVercelEnvironment} from '../provisioner/vercel-env.js';
 import {checkDeployment} from '../provisioner/deployment.js';
+import {projectSlugForCell} from '../provisioner/cell-domain.js';
 import {smokeTest} from '../provisioner/smoke.js';
 import {reconcileGithub,reconcileSupabase,reconcileVercel} from '../provisioner/reconcile.js';
 const scrypt=promisify(scryptCb);
@@ -136,7 +137,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
   }
   if(phase==='vercel'){
    const result=await createVercelProject({fetcher,token:await vercelToken(row.vercel_team_id,ownerId),approved:true,
-    plan:{teamId:row.vercel_team_id,projectName:row.repository,repoOwner:row.owner,repoName:row.repository}});
+    plan:{teamId:row.vercel_team_id,projectName:projectSlugForCell(row.cell_name),repoOwner:row.owner,repoName:row.repository}});
    return {receipt:{projectId:result.projectId}};
   }
   if(phase==='env'){
@@ -228,7 +229,7 @@ export function cloudOps({db,env=process.env,fetcher=fetch}){
   }
   if(phase==='vercel'){
    return reconcileVercel({fetcher,token:await vercelToken(row.vercel_team_id,ownerId),
-    teamId:row.vercel_team_id,projectName:row.repository,repository:row.owner+'/'+row.repository});
+    teamId:row.vercel_team_id,projectName:projectSlugForCell(row.cell_name),repository:row.owner+'/'+row.repository});
   }
   if(phase==='bootstrap'){
    const credential=await secrets(row);
