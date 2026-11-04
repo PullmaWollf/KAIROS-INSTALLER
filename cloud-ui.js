@@ -177,6 +177,11 @@ function renderPreinstallationAudit(report){
   'Publicação automática':f.deployment}).filter(x=>!x[1]).map(x=>x[0]);
  if(missing.length)area.append(el('p','Ainda bloqueado no servidor: '+missing.join(', ')+
   '. Essas operações só serão habilitadas na homologação autorizada.','preflight-warning'));
+ const guard=report.homologation;
+ if(guard)area.append(el('p',guard.readyForWrites?
+  'Proteções de homologação configuradas para uma única instalação e com validade limitada. A criação real ainda requer confirmação de custos.':
+  'Proteção adicional ativa: somente uma instalação de homologação previamente autorizada poderá criar recursos. Nenhuma autorização de escrita foi concedida por este diagnóstico.',
+  guard.readyForWrites?'preflight-info':'preflight-warning'));
  area.append(el('p',report.accessValidated?
   'Acesso de LEITURA confirmado nas três contas. Criar recursos de verdade ainda precisa ser testado.':
   'Pelo menos uma conexão precisa ser corrigida antes de preparar a instalação.',
