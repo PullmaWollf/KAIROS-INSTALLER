@@ -1,6 +1,7 @@
+import {runAssistedInstallation} from './cloud-assisted.js';
 const phases=['GitHub','Supabase','Migrações','Vercel','Variáveis','Primeiro ADM','Deploy','Verificação'];
 const $=id=>document.getElementById(id);
-let session=null,selected=null;
+let session=null,selected=null,autoInstalling=false;
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function button(text,handler,cls='secondary'){const b=el('button',text,cls);b.type='button';b.addEventListener('click',handler);return b;}
 function notify(message){$('alert').textContent=message||'';}
@@ -15,6 +16,7 @@ async function initialize(){
  try{
   session=await api('/api/session');
   $('auth-status').textContent=session.signedIn?'Conectado: '+session.user.login:'Entre com GitHub para começar';
+  $('logout').hidden=!session.signedIn;
   $('create-form').querySelector('button[type=submit]').disabled=!session.signedIn;
   $('owner').value=session.user?.login||'';
   const list=$('providers');list.replaceChildren();
@@ -22,8 +24,38 @@ async function initialize(){
    const card=el('div',undefined,'provider'),connected=session.providers?.includes(provider);
    card.append(el('strong',provider==='github'?'GitHub':provider==='supabase'?'Supabase':'Vercel'),
     el('span',connected?'Conta conectada':'Conexão pendente','state-label'));
-   const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
-   link.href='/api/auth/start?provider='+provider;card.append(link);
+   if(provider==='vercel'){
+    if(session.vercelTeam)card.append(el('small','Equipe: '+session.vercelTeam.teamSlug+' ('+session.vercelTeam.teamId+')','state-label'));
+    const form=document.createElement('form');form.autocomplete='off';
+    const teamLabel=el('label','ID da equipe Vercel');
+    const team=document.createElement('input');team.name='teamId';team.required=true;
+    team.placeholder='team_...';team.value=session.vercelTeam?.teamId||'';
+    team.autocomplete='off';team.maxLength=70;teamLabel.append(team);
+    const secretLabel=el('label','Token de acesso da sua conta Vercel');
+    const secret=document.createElement('input');secret.type='password';
+    secret.name='accessToken';secret.required=true;secret.minLength=20;secret.maxLength=512;
+    secret.autocomplete='new-password';secret.placeholder='Cole seu token de acesso';
+    secretLabel.append(secret);
+    const submit=el('button',connected?'Substituir credencial':'Verificar e conectar','primary');
+    submit.type='submit';form.append(teamLabel,secretLabel,submit);
+    form.addEventListener('submit',async e=>{
+     e.preventDefault();submit.disabled=true;
+     try{
+      await api('/api/connections/vercel',{method:'POST',
+       body:JSON.stringify({teamId:team.value.trim(),accessToken:secret.value.trim()})});
+      notify('Acesso à equipe Vercel validado. Credencial protegida no servidor.');
+      secret.value='';await initialize();
+     }catch(error){notify(error.message);secret.value='';}
+     finally{submit.disabled=false;}
+    });
+    const link=el('a','Criar token de acesso na Vercel','link-button secondary');
+    link.href='https://vercel.com/account/tokens';link.target='_blank';
+    link.rel='noopener noreferrer';
+    card.append(form,link);
+   }else{
+    const link=el('a',connected?'Reconectar':'Conectar','link-button '+(connected?'secondary':'primary'));
+    link.href='/api/auth/start?provider='+provider;card.append(link);
+   }
    if(connected)card.append(button('Desconectar',async()=>{
     if(!window.confirm('Desconectar '+provider+' neste instalador? Revogue também o acesso na conta do provedor se desejar.'))return;
     try{await api('/api/connections/disconnect',{method:'POST',body:JSON.stringify({provider})});await initialize();}
@@ -56,6 +88,7 @@ async function showDetail(id){
   const {installation:i,operations}=await api('/api/installations/'+id);
   selected=id;const box=$('detail');box.replaceChildren();
   box.append(el('h2',i.cellName+' — acompanhamento'));
+  if(i.proposedDomain)box.append(el('p','Domínio solicitado: https://'+i.proposedDomain+' (sujeito à disponibilidade)','notice'));
   const progress=el('ol',undefined,'steps');
   phases.forEach((name,index)=>progress.append(el('li',(index+1)+'. '+name,index<i.phaseIndex?'done':index===i.phaseIndex?'now':'')));
   box.append(progress);
@@ -65,10 +98,21 @@ async function showDetail(id){
     box.append(el('p','Estado: '+current.status+(current.errorCode?' · '+current.errorCode:''),'warning'));
    }else box.append(el('p','Próxima etapa: '+phases[i.phaseIndex],'notice'));
    const actions=el('div',undefined,'toolbar');
-   if(!current)actions.append(button('Autorizar e executar etapa',()=>execute(i),'primary'));
+   if(!current){
+    const action=button(autoInstalling?'Instalando…':'Instalar automaticamente',()=>assisted(i),'primary');
+    action.disabled=autoInstalling;
+    actions.append(action,button('Executar somente esta etapa',()=>execute(i)));
+   }
    else actions.append(button('Verificar e reconciliar (somente leitura)',()=>reconcile(i)));
    box.append(actions);
-  }else box.append(el('p','Todas as oito etapas estão registradas. Ainda é necessária homologação real.','notice'));
+  }else{
+   box.append(el('p','Todas as oito etapas foram registradas. Ainda é necessária a homologação do login e do isolamento.','notice'));
+   if(i.proposedDomain&&operations.some(o=>o.phase==='smoke'&&o.status==='confirmed')){
+    const link=el('a','Abrir célula: https://'+i.proposedDomain,'link-button secondary');
+    link.href='https://'+i.proposedDomain;link.target='_blank';link.rel='noopener noreferrer';
+    box.append(link);
+   }
+  }
   if(i.phaseIndex>=6){
    const area=el('div',undefined,'toolbar');
    area.append(button('Exibir credencial inicial do ADM (uma única vez)',()=>showInitialCredential(i.id)));
@@ -76,6 +120,24 @@ async function showDetail(id){
   }
   box.append(el('p','A instalação usa exclusivamente as contas informadas. Revisões de operações incertas não repetem ações remotas.','muted'));
  }catch(err){notify(err.message);}
+}
+async function assisted(i){
+ if(autoInstalling)return;
+ const approved=window.confirm('Autorizar toda a instalação da célula '+i.cellName+
+  '?\n\nGitHub: '+i.owner+'/'+i.repository+'\nSupabase: '+i.supabaseOrgId+
+  '\nVercel: '+i.vercelTeamId+
+  '\nDomínio solicitado: '+i.proposedDomain+
+  '\n\nOs provedores podem cobrar. O KAIRÓS executará as etapas em sequência; mantenha esta aba aberta até finalizar. Continuar?');
+ if(!approved)return;
+ autoInstalling=true;
+ try{
+  const consent={execute:true,acceptBilling:true,owner:i.owner,
+   supabaseOrgId:i.supabaseOrgId,vercelTeamId:i.vercelTeamId};
+  await runAssistedInstallation({request:api,installationId:i.id,consent,
+   onProgress:message=>notify(message)});
+  notify('Etapas do Installer concluídas; valide também login, permissões e PWA em dispositivos.');
+ }catch(error){notify('Instalação pausada com segurança: '+error.message);}
+ finally{autoInstalling=false;await loadInstallations();}
 }
 async function execute(i){
  const consent=window.confirm('Autoriza a etapa '+phases[i.phaseIndex]+'?\n\nGitHub: '+i.owner+
@@ -116,9 +178,16 @@ $('create-form').addEventListener('submit',async event=>{
  try{
   const out=await api('/api/installations',{method:'POST',body:JSON.stringify(payload)});
   event.currentTarget.reset();$('owner').value=session.user.login;
-  notify('Instalação registrada. Nenhum projeto externo foi criado.');
+  notify('Instalação registrada. Nenhum projeto externo foi criado antes da autorização.');
   await loadInstallations();await showDetail(out.installation.id);
+  await assisted(out.installation);
  }catch(err){notify(err.message);}
+});
+$('logout').addEventListener('click',async()=>{
+ if(autoInstalling){notify('Aguarde a operação em andamento terminar ou interrompa a aba após confirmar o estado.');return;}
+ try{await api('/api/logout',{method:'POST',body:'{}'});
+  session=null;selected=null;await initialize();notify('Sessão encerrada. Entre com a conta GitHub desejada.');
+ }catch(error){notify(error.message);}
 });
 $('reload').addEventListener('click',loadInstallations);
 initialize();
