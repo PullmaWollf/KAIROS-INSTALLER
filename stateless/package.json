@@ -1,0 +1,16 @@
+{
+  "name": "kairos-installer-stateless-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/launch-guard.mjs && node --check src/validation.mjs && node --check src/providers.mjs && node --check src/handoff.mjs && node --check worker/kairos-bootstrap.mjs && node --check api/preflight.mjs && node --check api/launch.mjs && node --check api/status.mjs"
+  },
+  "dependencies": {
+    "libsodium-wrappers": "0.8.4"
+  }
+}

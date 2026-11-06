@@ -1,0 +1,61 @@
+name: KAIRÓS - instalação automática da célula
+on:
+  workflow_dispatch:
+    inputs:
+      supabase_org_id:
+        description: Organização Supabase do cliente
+        required: true
+        type: string
+      vercel_scope:
+        description: Conta Vercel do cliente
+        required: true
+        type: string
+      cell_name:
+        description: Nome da célula
+        required: true
+        type: string
+      project_slug:
+        description: Identificador do projeto Vercel
+        required: true
+        type: string
+      region:
+        description: Região Supabase
+        required: true
+        type: string
+      admin_login:
+        description: Login inicial do administrador
+        required: true
+        type: string
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: kairos-install-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      KAIROS_SUPABASE_TOKEN: ${{ secrets.KAIROS_SUPABASE_TOKEN }}
+      KAIROS_VERCEL_TOKEN: ${{ secrets.KAIROS_VERCEL_TOKEN }}
+      KAIROS_ADMIN_PASSWORD: ${{ secrets.KAIROS_ADMIN_PASSWORD }}
+      KAIROS_DB_PASSWORD: ${{ secrets.KAIROS_DB_PASSWORD }}
+      KAIROS_GITHUB_AUTOMATION_TOKEN: ${{ secrets.KAIROS_GITHUB_AUTOMATION_TOKEN }}
+      KAIROS_SUPABASE_ORG: ${{ inputs.supabase_org_id }}
+      KAIROS_VERCEL_SCOPE: ${{ inputs.vercel_scope }}
+      KAIROS_CELL_NAME: ${{ inputs.cell_name }}
+      KAIROS_PROJECT_SLUG: ${{ inputs.project_slug }}
+      KAIROS_REGION: ${{ inputs.region }}
+      KAIROS_ADMIN_LOGIN: ${{ inputs.admin_login }}
+      KAIROS_GITHUB_REPO: ${{ github.repository }}
+      KAIROS_RUN_WORKER: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Instalar KAIRÓS nas contas do cliente
+        run: node .github/kairos/kairos-bootstrap.mjs
+      - name: Revogar credenciais temporárias no próprio repositório
+        if: always()
+        run: node .github/kairos/cleanup.mjs
